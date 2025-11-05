@@ -24,7 +24,10 @@ module.exports = {
       package: "com.mcdonalds.azul"
     },
     web: {
-      favicon: "./assets/favicon.png"
+      "output": "static",
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "publicPath": "/mcdonalds-azul-front/"
     },
     extra: {
       eas: {
