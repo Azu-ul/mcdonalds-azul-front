@@ -65,7 +65,6 @@ export default function TabsLayout() {
               <Text style={{ fontSize: 20 }}>👤</Text>
             </View>
           ),
-          href: null,
         }}
       />
     </Tabs>
