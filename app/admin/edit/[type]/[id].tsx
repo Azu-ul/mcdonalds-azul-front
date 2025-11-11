@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import api from '../../../../config/api';
 import CustomModal from '../../../components/CustomModal';
 
@@ -22,6 +23,8 @@ type Product = {
   price?: number;
   is_available?: boolean;
   category?: string;
+  category_id?: number;
+  image_url?: string;
 };
 
 type Restaurant = {
@@ -49,6 +52,7 @@ type Coupon = {
   end_date?: string;
   is_active?: boolean;
   usage_limit?: number;
+  image_url?: string;
 };
 
 type Flyer = {
@@ -61,6 +65,11 @@ type Flyer = {
   start_date?: string;
   end_date?: string;
   is_active?: boolean;
+};
+
+type Category = {
+  id: number;
+  name: string;
 };
 
 type FormData = User | Product | Restaurant | Coupon | Flyer;
@@ -84,6 +93,8 @@ const EditScreen = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<FormData>({} as FormData);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   const [modalState, setModalState] = useState<{
     visible: boolean;
@@ -101,7 +112,22 @@ const EditScreen = () => {
 
   useEffect(() => {
     fetchItem();
+    if (type === 'productos') {
+      fetchCategories();
+    }
   }, [type, id]);
+
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const res = await api.get('/categories');
+      setCategories(res.data.categories || []);
+    } catch (err) {
+      console.error('Error al cargar categorías:', err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   // Función para cargar el elemento
   const fetchItem = async () => {
@@ -314,6 +340,41 @@ const EditScreen = () => {
         placeholder="Precio"
         keyboardType="numeric"
       />
+
+      <Text style={styles.label}>URL de la imagen</Text>
+      <TextInput
+        style={styles.input}
+        value={getProperty('image_url') as string || ''}
+        onChangeText={(text) => setProperty('image_url', text)}
+        placeholder="https://ejemplo.com/imagen.jpg"
+        keyboardType="url"
+        autoCapitalize="none"
+      />
+
+      <Text style={styles.label}>Categoría</Text>
+      {loadingCategories ? (
+        <View style={styles.pickerLoading}>
+          <ActivityIndicator size="small" color="#DA291C" />
+          <Text style={styles.pickerLoadingText}>Cargando categorías...</Text>
+        </View>
+      ) : (
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={getProperty('category_id')}
+            onValueChange={(value) => setProperty('category_id', value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Seleccionar categoría" value={null} />
+            {categories.map((category) => (
+              <Picker.Item
+                key={category.id}
+                label={category.name}
+                value={category.id}
+              />
+            ))}
+          </Picker>
+        </View>
+      )}
       
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Disponible</Text>
@@ -431,6 +492,16 @@ const EditScreen = () => {
         multiline
         numberOfLines={3}
       />
+
+      <Text style={styles.label}>URL de la imagen</Text>
+      <TextInput
+        style={styles.input}
+        value={getProperty('image_url') as string || ''}
+        onChangeText={(text) => setProperty('image_url', text)}
+        placeholder="https://ejemplo.com/imagen.jpg"
+        keyboardType="url"
+        autoCapitalize="none"
+      />
       
       <View style={styles.row}>
         <View style={styles.halfInput}>
@@ -465,30 +536,6 @@ const EditScreen = () => {
             value={getProperty('discount_value') ? (getProperty('discount_value') as number).toString() : ''}
             onChangeText={(text) => setProperty('discount_value', parseFloat(text) || 0)}
             placeholder={getProperty('discount_type') === 'percentage' ? '15' : '1000'}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-      
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Compra mínima</Text>
-          <TextInput
-            style={styles.input}
-            value={getProperty('min_purchase') ? (getProperty('min_purchase') as number).toString() : ''}
-            onChangeText={(text) => setProperty('min_purchase', parseFloat(text) || 0)}
-            placeholder="0"
-            keyboardType="numeric"
-          />
-        </View>
-        
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Límite de uso</Text>
-          <TextInput
-            style={styles.input}
-            value={getProperty('usage_limit') ? (getProperty('usage_limit') as number).toString() : ''}
-            onChangeText={(text) => setProperty('usage_limit', parseInt(text) || 0)}
-            placeholder="100"
             keyboardType="numeric"
           />
         </View>
@@ -795,6 +842,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  pickerLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    gap: 8,
+  },
+  pickerLoadingText: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 

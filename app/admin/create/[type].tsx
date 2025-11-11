@@ -1,14 +1,20 @@
 // /app/admin/create/[type].tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 import api from '../../../config/api';
 import CustomModal from '../../components/CustomModal';
 
 type FormData = {
   [key: string]: any;
+};
+
+type Category = {
+  id: number;
+  name: string;
 };
 
 
@@ -19,6 +25,8 @@ const CreateScreen = () => {
   const [formData, setFormData] = useState<FormData>({});
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
   const [dateField, setDateField] = useState<'start_date' | 'end_date'>('start_date');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   const [modalState, setModalState] = useState<{
     visible: boolean;
@@ -34,7 +42,26 @@ const CreateScreen = () => {
     message: '',
   });
 
-  // Función para guardar el elemento
+  // Cargar categorías al montar el componente
+  useEffect(() => {
+    if (type === 'productos') {
+      fetchCategories();
+    }
+  }, [type]);
+
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const res = await api.get('/categories');
+      setCategories(res.data.categories || []);
+    } catch (err) {
+      console.error('Error al cargar categorías:', err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  // Función para guardar el elemento
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -186,15 +213,41 @@ const CreateScreen = () => {
         placeholder="0.00"
         keyboardType="numeric"
       />
-      
-      <Text style={styles.label}>ID de Categoría *</Text>
+
+      <Text style={styles.label}>URL de la imagen</Text>
       <TextInput
         style={styles.input}
-        value={formData.category_id ? formData.category_id.toString() : ''}
-        onChangeText={(text) => setProperty('category_id', parseInt(text) || 0)}
-        placeholder="1"
-        keyboardType="numeric"
+        value={formData.image_url || ''}
+        onChangeText={(text) => setProperty('image_url', text)}
+        placeholder="https://ejemplo.com/imagen.jpg"
+        keyboardType="url"
+        autoCapitalize="none"
       />
+      
+      <Text style={styles.label}>Categoría *</Text>
+      {loadingCategories ? (
+        <View style={styles.pickerLoading}>
+          <ActivityIndicator size="small" color="#DA291C" />
+          <Text style={styles.pickerLoadingText}>Cargando categorías...</Text>
+        </View>
+      ) : (
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={formData.category_id}
+            onValueChange={(value) => setProperty('category_id', value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Seleccionar categoría" value={null} />
+            {categories.map((category) => (
+              <Picker.Item
+                key={category.id}
+                label={category.name}
+                value={category.id}
+              />
+            ))}
+          </Picker>
+        </View>
+      )}
       
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Disponible</Text>
@@ -303,15 +356,6 @@ const CreateScreen = () => {
         placeholder="Título del cupón"
       />
       
-      <Text style={styles.label}>Código *</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.code || ''}
-        onChangeText={(text) => setProperty('code', text)}
-        placeholder="CODIGO123"
-        autoCapitalize="characters"
-      />
-      
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -320,6 +364,16 @@ const CreateScreen = () => {
         placeholder="Descripción del cupón"
         multiline
         numberOfLines={3}
+      />
+
+      <Text style={styles.label}>URL de la imagen</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.image_url || ''}
+        onChangeText={(text) => setProperty('image_url', text)}
+        placeholder="https://ejemplo.com/imagen.jpg"
+        keyboardType="url"
+        autoCapitalize="none"
       />
       
       <View style={styles.row}>
@@ -355,30 +409,6 @@ const CreateScreen = () => {
             value={formData.discount_value ? formData.discount_value.toString() : ''}
             onChangeText={(text) => setProperty('discount_value', parseFloat(text) || 0)}
             placeholder={formData.discount_type === 'percentage' ? '15' : '1000'}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-      
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Compra mínima</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.min_purchase ? formData.min_purchase.toString() : ''}
-            onChangeText={(text) => setProperty('min_purchase', parseFloat(text) || 0)}
-            placeholder="0"
-            keyboardType="numeric"
-          />
-        </View>
-        
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Límite de uso</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.usage_limit ? formData.usage_limit.toString() : ''}
-            onChangeText={(text) => setProperty('usage_limit', parseInt(text) || null)}
-            placeholder="100"
             keyboardType="numeric"
           />
         </View>
@@ -715,6 +745,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  pickerLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    gap: 8,
+  },
+  pickerLoadingText: {
+    fontSize: 14,
+    color: '#666',
   },
 });
 
