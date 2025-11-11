@@ -25,6 +25,8 @@ const CreateScreen = () => {
   const [formData, setFormData] = useState<FormData>({});
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
   const [dateField, setDateField] = useState<'start_date' | 'end_date'>('start_date');
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<number[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
@@ -49,6 +51,22 @@ const CreateScreen = () => {
     }
   }, [type]);
 
+  // Cargar ingredientes si el tipo es productos
+  useEffect(() => {
+    if (type === 'productos') {
+      fetchIngredients();
+    }
+  }, [type]);
+
+  const fetchIngredients = async () => {
+    try {
+      const res = await api.get('/admin/ingredientes');
+      setIngredients(res.data.ingredients || []);
+    } catch (err) {
+      console.error('Error al cargar ingredientes:', err);
+    }
+  };
+
   const fetchCategories = async () => {
     setLoadingCategories(true);
     try {
@@ -66,7 +84,7 @@ const CreateScreen = () => {
     setSaving(true);
     try {
       let endpoint = '';
-      
+
       switch (type) {
         case 'usuarios':
         case 'repartidores':
@@ -124,7 +142,7 @@ const CreateScreen = () => {
   // Función para manejar cambios en las fechas
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker({ start: false, end: false });
-    
+
     if (selectedDate) {
       const isoString = selectedDate.toISOString();
       setProperty(dateField, isoString);
@@ -153,7 +171,7 @@ const CreateScreen = () => {
         onChangeText={(text) => setProperty('full_name', text)}
         placeholder="Nombre completo"
       />
-      
+
       <Text style={styles.label}>Email *</Text>
       <TextInput
         style={styles.input}
@@ -163,7 +181,7 @@ const CreateScreen = () => {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      
+
       <Text style={styles.label}>Teléfono</Text>
       <TextInput
         style={styles.input}
@@ -194,7 +212,7 @@ const CreateScreen = () => {
         onChangeText={(text) => setProperty('name', text)}
         placeholder="Nombre del producto"
       />
-      
+
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -204,7 +222,7 @@ const CreateScreen = () => {
         multiline
         numberOfLines={3}
       />
-      
+
       <Text style={styles.label}>Precio *</Text>
       <TextInput
         style={styles.input}
@@ -214,6 +232,7 @@ const CreateScreen = () => {
         keyboardType="numeric"
       />
 
+      {/* ✅ AGREGAR URL DE IMAGEN */}
       <Text style={styles.label}>URL de la imagen</Text>
       <TextInput
         style={styles.input}
@@ -223,32 +242,49 @@ const CreateScreen = () => {
         keyboardType="url"
         autoCapitalize="none"
       />
-      
-      <Text style={styles.label}>Categoría *</Text>
-      {loadingCategories ? (
-        <View style={styles.pickerLoading}>
-          <ActivityIndicator size="small" color="#DA291C" />
-          <Text style={styles.pickerLoadingText}>Cargando categorías...</Text>
-        </View>
-      ) : (
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={formData.category_id}
-            onValueChange={(value) => setProperty('category_id', value)}
-            style={styles.picker}
+
+      <Text style={styles.label}>ID de Categoría *</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.category_id ? formData.category_id.toString() : ''}
+        onChangeText={(text) => setProperty('category_id', parseInt(text) || 0)}
+        placeholder="1"
+        keyboardType="numeric"
+      />
+
+      {/* ✅ SELECTOR DE INGREDIENTES */}
+      <Text style={styles.label}>Ingredientes</Text>
+      <View style={styles.ingredientsContainer}>
+        {ingredients.map((ingredient) => (
+          <TouchableOpacity
+            key={ingredient.id}
+            style={[
+              styles.ingredientChip,
+              selectedIngredients.includes(ingredient.id) && styles.ingredientChipSelected
+            ]}
+            onPress={() => {
+              setSelectedIngredients(prev =>
+                prev.includes(ingredient.id)
+                  ? prev.filter(id => id !== ingredient.id)
+                  : [...prev, ingredient.id]
+              );
+              setProperty('ingredients',
+                selectedIngredients.includes(ingredient.id)
+                  ? selectedIngredients.filter(id => id !== ingredient.id)
+                  : [...selectedIngredients, ingredient.id]
+              );
+            }}
           >
-            <Picker.Item label="Seleccionar categoría" value={null} />
-            {categories.map((category) => (
-              <Picker.Item
-                key={category.id}
-                label={category.name}
-                value={category.id}
-              />
-            ))}
-          </Picker>
-        </View>
-      )}
-      
+            <Text style={[
+              styles.ingredientChipText,
+              selectedIngredients.includes(ingredient.id) && styles.ingredientChipTextSelected
+            ]}>
+              {ingredient.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Disponible</Text>
         <Switch
@@ -269,7 +305,7 @@ const CreateScreen = () => {
         onChangeText={(text) => setProperty('name', text)}
         placeholder="Nombre del restaurante"
       />
-      
+
       <Text style={styles.label}>Dirección *</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -279,7 +315,7 @@ const CreateScreen = () => {
         multiline
         numberOfLines={2}
       />
-      
+
       <Text style={styles.label}>Teléfono</Text>
       <TextInput
         style={styles.input}
@@ -288,7 +324,7 @@ const CreateScreen = () => {
         placeholder="+54 123 456-7890"
         keyboardType="phone-pad"
       />
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Latitud *</Text>
@@ -300,7 +336,7 @@ const CreateScreen = () => {
             keyboardType="numeric"
           />
         </View>
-        
+
         <View style={styles.halfInput}>
           <Text style={styles.label}>Longitud *</Text>
           <TextInput
@@ -312,7 +348,7 @@ const CreateScreen = () => {
           />
         </View>
       </View>
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Hora de apertura</Text>
@@ -323,7 +359,7 @@ const CreateScreen = () => {
             placeholder="08:00:00"
           />
         </View>
-        
+
         <View style={styles.halfInput}>
           <Text style={styles.label}>Hora de cierre</Text>
           <TextInput
@@ -334,7 +370,7 @@ const CreateScreen = () => {
           />
         </View>
       </View>
-      
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Abierto</Text>
         <Switch
@@ -355,7 +391,7 @@ const CreateScreen = () => {
         onChangeText={(text) => setProperty('title', text)}
         placeholder="Título del cupón"
       />
-      
+
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -375,7 +411,7 @@ const CreateScreen = () => {
         keyboardType="url"
         autoCapitalize="none"
       />
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Tipo de descuento *</Text>
@@ -389,7 +425,7 @@ const CreateScreen = () => {
               </View>
               <Text style={styles.radioLabel}>Porcentaje</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.radioButton}
               onPress={() => setProperty('discount_type', 'fixed')}
@@ -401,7 +437,7 @@ const CreateScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-        
+
         <View style={styles.halfInput}>
           <Text style={styles.label}>Valor de descuento *</Text>
           <TextInput
@@ -413,7 +449,7 @@ const CreateScreen = () => {
           />
         </View>
       </View>
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Fecha de inicio</Text>
@@ -426,7 +462,7 @@ const CreateScreen = () => {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.halfInput}>
           <Text style={styles.label}>Fecha de fin</Text>
           <TouchableOpacity
@@ -439,7 +475,7 @@ const CreateScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Activo</Text>
         <Switch
@@ -460,7 +496,7 @@ const CreateScreen = () => {
         onChangeText={(text) => setProperty('title', text)}
         placeholder="Título del flyer"
       />
-      
+
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -470,7 +506,7 @@ const CreateScreen = () => {
         multiline
         numberOfLines={3}
       />
-      
+
       <Text style={styles.label}>URL de la imagen *</Text>
       <TextInput
         style={styles.input}
@@ -480,7 +516,7 @@ const CreateScreen = () => {
         keyboardType="url"
         autoCapitalize="none"
       />
-      
+
       <Text style={styles.label}>URL del enlace</Text>
       <TextInput
         style={styles.input}
@@ -490,7 +526,7 @@ const CreateScreen = () => {
         keyboardType="url"
         autoCapitalize="none"
       />
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Orden de visualización</Text>
@@ -503,7 +539,7 @@ const CreateScreen = () => {
           />
         </View>
       </View>
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Fecha de inicio</Text>
@@ -516,7 +552,7 @@ const CreateScreen = () => {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.halfInput}>
           <Text style={styles.label}>Fecha de fin</Text>
           <TouchableOpacity
@@ -529,7 +565,7 @@ const CreateScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Activo</Text>
         <Switch
@@ -770,6 +806,32 @@ const styles = StyleSheet.create({
   pickerLoadingText: {
     fontSize: 14,
     color: '#666',
+  },
+  ingredientsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  ingredientChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  ingredientChipSelected: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF6B6B',
+  },
+  ingredientChipText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  ingredientChipTextSelected: {
+    color: '#FFFFFF',
   },
 });
 

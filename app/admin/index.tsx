@@ -155,6 +155,7 @@ const AdminScreen = () => {
         if (!itemToDelete) return;
 
         const itemName = getItemDisplayName(itemToDelete);
+        hideModal(); // ✅ Cerrar el modal ANTES de eliminar
 
         try {
             await api.delete(`/admin/${activeTab}/${itemToDelete.id}`);
@@ -164,10 +165,12 @@ const AdminScreen = () => {
                 title: 'Éxito',
                 message: `${itemName} eliminado correctamente`,
                 showCancel: false,
-                confirmText: 'Aceptar'
+                confirmText: 'Aceptar',
+                onConfirm: () => {
+                    hideModal();
+                    fetchData(); // Recargar datos
+                }
             });
-
-            fetchData(); // Recargar datos
         } catch (err: any) {
             console.error('Delete error:', err);
             const errorMessage = err.response?.data?.error || 'No se pudo eliminar';
@@ -177,7 +180,8 @@ const AdminScreen = () => {
                 title: 'Error',
                 message: errorMessage,
                 showCancel: false,
-                confirmText: 'Aceptar'
+                confirmText: 'Aceptar',
+                onConfirm: () => hideModal()
             });
         }
     };
