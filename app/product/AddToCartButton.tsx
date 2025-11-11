@@ -1,30 +1,55 @@
-// src/components/product/AddToCartButton.tsx
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import CustomModal from '../components/CustomModal';
 import { useAuth } from '../context/AuthContext';
-import api from '../../config/api';
 
 type Props = {
   price: number;
   onAdd: () => void;
   maxQuantity?: number;
+  disabled?: boolean;
 };
 
-const AddToCartButton = ({ price, onAdd, maxQuantity = 5 }: Props) => {
+const AddToCartButton = ({ price, onAdd, maxQuantity = 5, disabled = false }: Props) => {
+  const router = useRouter();
   const [quantity, setQuantity] = useState(1);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [customModal, setCustomModal] = useState({
+    visible: false,
+    type: 'info' as const,
+    title: '',
+    message: '',
+  });
   const { isAuthenticated } = useAuth();
+
+  const showModal = (title: string, message: string) => {
+    setCustomModal({
+      visible: true,
+      type: 'info',
+      title,
+      message,
+    });
+  };
+
+  const hideModal = () => {
+    setCustomModal(prev => ({ ...prev, visible: false }));
+  };
 
   const handleAdd = async () => {
     if (!isAuthenticated) {
-      setModalVisible(true);
+      showModal(
+        'Inicia sesión',
+        'Debes iniciar sesión para agregar productos al carrito.'
+      );
       return;
     }
 
-    // Aquí iría la lógica real de agregar al carrito
-    // Ej: await api.post('/cart/items', { ... })
     onAdd();
+  };
+
+  const handleGoToLogin = () => {
+    hideModal();
+    router.push('/signin');
   };
 
   return (
@@ -36,7 +61,7 @@ const AddToCartButton = ({ price, onAdd, maxQuantity = 5 }: Props) => {
             onPress={() => setQuantity(q => Math.max(1, q - 1))}
             style={[styles.quantityBtn, quantity <= 1 && styles.disabled]}
           >
-            <Text>-</Text>
+            <Text style={styles.quantityBtnText}>−</Text>
           </TouchableOpacity>
           <Text style={styles.quantityText}>{quantity}</Text>
           <TouchableOpacity
@@ -44,30 +69,33 @@ const AddToCartButton = ({ price, onAdd, maxQuantity = 5 }: Props) => {
             onPress={() => setQuantity(q => Math.min(maxQuantity, q + 1))}
             style={[styles.quantityBtn, quantity >= maxQuantity && styles.disabled]}
           >
-            <Text>+</Text>
+            <Text style={styles.quantityBtnText}>+</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+        <TouchableOpacity 
+          style={[styles.addButton, disabled && styles.addButtonDisabled]} 
+          onPress={handleAdd}
+          disabled={disabled}
+        >
           <Text style={styles.addText}>Agregar</Text>
         </TouchableOpacity>
 
-        <Text style={styles.price}>${(price * quantity).toLocaleString()}</Text>
+        <Text style={styles.price}>
+          ${(price * quantity).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+        </Text>
       </View>
 
       <CustomModal
-        visible={modalVisible}
-        type="info"
-        title="Inicia sesión"
-        message="Debes iniciar sesión para agregar productos al carrito."
+        visible={customModal.visible}
+        type={customModal.type}
+        title={customModal.title}
+        message={customModal.message}
         confirmText="Ingresar"
         showCancel
         cancelText="Cancelar"
-        onConfirm={() => {
-          // Redirigir a login
-          // Ej: router.push('/signin')
-        }}
-        onCancel={() => setModalVisible(false)}
+        onConfirm={handleGoToLogin}
+        onCancel={hideModal}
       />
     </>
   );
@@ -78,44 +106,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#292929',
     borderRadius: 30,
     padding: 12,
-    marginTop: 20,
+    gap: 12,
   },
   quantityControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F5F5',
     borderRadius: 20,
     overflow: 'hidden',
   },
   quantityBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   disabled: {
     opacity: 0.4,
   },
+  quantityBtnText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#292929',
+  },
   quantityText: {
     fontSize: 16,
-    fontWeight: '600',
-    paddingHorizontal: 8,
+    fontWeight: 'bold',
+    color: '#292929',
+    paddingHorizontal: 12,
   },
   addButton: {
-    backgroundColor: '#DA291C',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  addButtonDisabled: {
+    opacity: 0.5,
   },
   addText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   price: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
+    minWidth: 80,
+    textAlign: 'right',
   },
 });
 

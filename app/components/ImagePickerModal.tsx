@@ -8,6 +8,7 @@ import {
     StyleSheet,
     Platform,
 } from "react-native";
+import CustomModal from './CustomModal';
 
 type PickerMode = 'image' | 'document';
 
@@ -31,6 +32,20 @@ export default function ImagePickerModal({
     const [showWebcam, setShowWebcam] = useState(false);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+
+    const [modalState, setModalState] = useState<{
+        visible: boolean;
+        type: 'success' | 'error' | 'info' | 'delete';
+        title: string;
+        message: string;
+        showCancel?: boolean;
+        onConfirm?: () => void;
+    }>({
+        visible: false,
+        type: 'info',
+        title: '',
+        message: '',
+    });
 
     useEffect(() => {
         if (!visible) {
@@ -68,9 +83,17 @@ export default function ImagePickerModal({
             setShowWebcam(true);
         } catch (error) {
             console.error('❌ Error starting webcam:', error);
-            alert('No se pudo acceder a la cámara. Verifica los permisos.');
+            setModalState({
+                visible: true,
+                type: 'error',
+                title: 'Error',
+                message: 'No se pudo acceder a la cámara. Verifica los permisos.',
+                onConfirm: () => {
+                    setModalState(prev => ({ ...prev, visible: false }));
+                    onClose();
+                }
+            });
             setShowWebcam(false);
-            onClose();
         }
     };
 
@@ -91,7 +114,13 @@ export default function ImagePickerModal({
         console.log('📸 Capturing photo...');
         if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
             console.error('❌ Video not ready');
-            alert('El video no está listo. Espera un momento e intenta de nuevo.');
+            setModalState({
+                visible: true,
+                type: 'error',
+                title: 'Error',
+                message: 'El video no está listo. Espera un momento e intenta de nuevo.',
+                onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+            });
             return;
         }
 
@@ -114,7 +143,13 @@ export default function ImagePickerModal({
                     onClose();
                 } else {
                     console.error('❌ Failed to create blob');
-                    alert('Error al capturar la foto. Intenta de nuevo.');
+                    setModalState({
+                        visible: true,
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Error al capturar la foto. Intenta de nuevo.',
+                        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+                    });
                 }
             }, 'image/jpeg', 0.8);
         }
@@ -131,7 +166,6 @@ export default function ImagePickerModal({
 
     const handleChooseGallery = () => {
         if (Platform.OS === 'web' && onCaptureWebcam) {
-            // En web, usar input file para ambos modos pero con estilos unificados
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = mode === 'document' ? '.jpg,.jpeg,.png,.pdf' : 'image/*';
@@ -147,61 +181,70 @@ export default function ImagePickerModal({
             
             input.click();
         } else {
-            // En móvil, usar la función existente
             onChooseGallery();
             onClose();
         }
     };
 
-    // Vista de cámara web (solo web + modo imagen)
     if (Platform.OS === 'web' && showWebcam && mode === 'image') {
         return (
-            <Modal visible={visible} transparent animationType="fade">
-                <View style={styles.overlay}>
-                    <View style={styles.webcamContainer}>
-                        <Text style={styles.webcamTitle}>📷 Tomar foto</Text>
-                        <View style={styles.videoWrapper}>
-                            <video
-                                ref={(ref) => {
-                                    videoRef.current = ref;
-                                }}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    borderRadius: 12,
-                                    backgroundColor: '#000',
-                                    transform: 'scaleX(-1)',
-                                }}
-                                autoPlay
-                                playsInline
-                                muted
-                            />
-                        </View>
-                        <View style={[styles.buttonContainer, { flexDirection: 'row', justifyContent: 'space-between' }]}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => {
-                                    stopWebcam();
-                                    setShowWebcam(false);
-                                }}
-                            >
-                                <Text style={styles.cancelText}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.confirmButton}
-                                onPress={capturePhoto}
-                            >
-                                <Text style={styles.confirmText}>📸 Capturar</Text>
-                            </TouchableOpacity>
+            <>
+                <Modal visible={visible} transparent animationType="fade">
+                    <View style={styles.overlay}>
+                        <View style={styles.webcamContainer}>
+                            <Text style={styles.webcamTitle}>📷 Tomar foto</Text>
+                            <View style={styles.videoWrapper}>
+                                <video
+                                    ref={(ref) => {
+                                        videoRef.current = ref;
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        borderRadius: 12,
+                                        backgroundColor: '#000',
+                                        transform: 'scaleX(-1)',
+                                    }}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                />
+                            </View>
+                            <View style={[styles.buttonContainer, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => {
+                                        stopWebcam();
+                                        setShowWebcam(false);
+                                    }}
+                                >
+                                    <Text style={styles.cancelText}>Cancelar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.confirmButton}
+                                    onPress={capturePhoto}
+                                >
+                                    <Text style={styles.confirmText}>📸 Capturar</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
+
+                <CustomModal
+                    visible={modalState.visible}
+                    type={modalState.type}
+                    title={modalState.title}
+                    message={modalState.message}
+                    showCancel={modalState.showCancel}
+                    onConfirm={modalState.onConfirm}
+                    onCancel={() => setModalState(prev => ({ ...prev, visible: false }))}
+                />
+            </>
         );
     }
 
-    // Vista principal de selección
     const isDocument = mode === 'document';
     const title = isDocument ? '🪪 Subir documento' : '📷 Foto de perfil';
     const message = isDocument
@@ -209,42 +252,52 @@ export default function ImagePickerModal({
         : 'Selecciona una opción';
 
     return (
-        <Modal visible={visible} transparent animationType="fade">
-            <View style={styles.overlay}>
-                <View style={styles.modalContainer}>
-                    <Text style={styles.title}>{title}</Text>
-                    <Text style={styles.message}>{message}</Text>
+        <>
+            <Modal visible={visible} transparent animationType="fade">
+                <View style={styles.overlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.title}>{title}</Text>
+                        <Text style={styles.message}>{message}</Text>
 
-                    <View style={styles.buttonContainer}>
-                        {/* Cámara solo para imágenes */}
-                        {!isDocument && (
+                        <View style={styles.buttonContainer}>
+                            {!isDocument && (
+                                <TouchableOpacity
+                                    style={styles.optionButton}
+                                    onPress={handleTakePhoto}
+                                >
+                                    <Text style={styles.optionText}>
+                                        {Platform.OS === 'web' ? '📷 Usar cámara' : '📷 Tomar foto'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+
                             <TouchableOpacity
                                 style={styles.optionButton}
-                                onPress={handleTakePhoto}
+                                onPress={handleChooseGallery}
                             >
                                 <Text style={styles.optionText}>
-                                    {Platform.OS === 'web' ? '📷 Usar cámara' : '📷 Tomar foto'}
+                                    {isDocument ? '📎 Elegir de galería' : '🖼️ Elegir de galería'}
                                 </Text>
                             </TouchableOpacity>
-                        )}
+                        </View>
 
-                        {/* Galería para ambos modos - ahora con estilo unificado */}
-                        <TouchableOpacity
-                            style={styles.optionButton}
-                            onPress={handleChooseGallery}
-                        >
-                            <Text style={styles.optionText}>
-                                {isDocument ? '📎 Elegir de galería' : '🖼️ Elegir de galería'}
-                            </Text>
+                        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                            <Text style={styles.closeText}>Cancelar</Text>
                         </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                        <Text style={styles.closeText}>Cancelar</Text>
-                    </TouchableOpacity>
                 </View>
-            </View>
-        </Modal>
+            </Modal>
+
+            <CustomModal
+                visible={modalState.visible}
+                type={modalState.type}
+                title={modalState.title}
+                message={modalState.message}
+                showCancel={modalState.showCancel}
+                onConfirm={modalState.onConfirm}
+                onCancel={() => setModalState(prev => ({ ...prev, visible: false }))}
+            />
+        </>
     );
 }
 

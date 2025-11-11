@@ -148,7 +148,7 @@ export default function Login() {
 
   const handleGoogleLoginWeb = () => {
     const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-    const redirectUri = 'https://mcdonalds-azul-front.vercel.app';
+    const redirectUri = window.location.origin;
     const scope = 'openid profile email';
     const responseType = 'id_token';
     const nonce = Math.random().toString(36).substring(7);

@@ -9,17 +9,18 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { Picker } from '@react-native-picker/picker';
-import Checkbox from 'expo-checkbox';
-import api from '../../config/api';
-import CustomModal from '../components/CustomModal';
-import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'expo-router'; // Navegación entre pantallas
+import { useForm, Controller } from 'react-hook-form'; // Manejo de formularios
+import { yupResolver } from '@hookform/resolvers/yup'; // Resolución de esquemas de validación
+import * as yup from 'yup'; // Validación de esquemas
+import { Picker } from '@react-native-picker/picker'; // Selector desplegable
+import Checkbox from 'expo-checkbox'; // Componente checkbox
+import api from '../../config/api'; // Configuración API para backend
+import CustomModal from '../components/CustomModal'; // Modal personalizado
+import { useAuth } from '../context/AuthContext'; // Contexto de autenticación
 
-// Tipos TypeScript
+
+// Definición de tipos de datos para el formulario de repartidor
 interface DeliveryFormData {
   username: string;
   email: string;
@@ -34,16 +35,19 @@ interface DeliveryFormData {
   end_time: string;
 }
 
+// Tipo para opciones de días disponibles
 interface DayOption {
   label: string;
   value: string;
 }
 
+// Tipo para opciones de tipo de vehículo
 interface VehicleOption {
   label: string;
   value: 'bicycle' | 'motorcycle' | 'car' | 'foot';
 }
 
+// Schema yup para validar los datos del formulario con mensajes de error personalizados
 const schema = yup.object({
   username: yup.string().required('Usuario requerido').min(3, 'Mínimo 3 caracteres'),
   email: yup.string().required('Email requerido').email('Email inválido'),
@@ -58,6 +62,7 @@ const schema = yup.object({
   end_time: yup.string().required('Hora de fin requerida')
 });
 
+// Lista de días de la semana para seleccionar disponibilidad
 const daysOfWeek: DayOption[] = [
   { label: 'Lunes', value: 'monday' },
   { label: 'Martes', value: 'tuesday' },
@@ -68,6 +73,7 @@ const daysOfWeek: DayOption[] = [
   { label: 'Domingo', value: 'sunday' }
 ];
 
+// Opciones para el tipo de vehículo con emojis para UI
 const vehicleTypes: VehicleOption[] = [
   { label: '🚲 Bicicleta', value: 'bicycle' },
   { label: '🏍️ Moto', value: 'motorcycle' },
@@ -76,14 +82,16 @@ const vehicleTypes: VehicleOption[] = [
 ];
 
 export default function DeliveryRegister() {
-  const router = useRouter();
-  const { user: existingUser, login } = useAuth();
-  const [loading, setLoading] = useState<boolean>(false);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [modalType, setModalType] = useState<'info' | 'delete'>('info');
-  const [modalTitle, setModalTitle] = useState<string>('');
-  const [modalMessage, setModalMessage] = useState<string>('');
+  const router = useRouter(); // Hook de navegación
+  const { user: existingUser, login } = useAuth(); // Usuario autenticado y función para login
+  const [loading, setLoading] = useState<boolean>(false); // Estado para mostrar loader
+  const [modalVisible, setModalVisible] = useState<boolean>(false); // Estado para mostrar modal
+  const [modalType, setModalType] = useState<'info' | 'delete'>('info'); // Tipo de modal
+  const [modalTitle, setModalTitle] = useState<string>(''); // Título modal
+  const [modalMessage, setModalMessage] = useState<string>(''); // Mensaje modal
 
+
+  // Configuración de react-hook-form con yup para validación y valores por defecto
   const { control, handleSubmit, formState: { errors }, watch, setValue } = useForm<DeliveryFormData>({
     resolver: yupResolver(schema) as any,
     mode: 'onTouched',
@@ -93,7 +101,7 @@ export default function DeliveryRegister() {
       full_name: '',
       password: '',
       password2: '',
-      birth_date: new Date(Date.now() - 568025136000),
+      birth_date: new Date(Date.now() - 568025136000), // Fecha default (aprox 18 años atrás)
       vehicle_type: '',
       address: '',
       start_time: '09:00',
@@ -102,8 +110,10 @@ export default function DeliveryRegister() {
     }
   });
 
+  // Observar el valor del campo vehicle_type para UI reactiva
   const selectedVehicle = watch('vehicle_type');
 
+  // Función para mostrar modal con datos dinámicos
   const showModal = (type: 'info' | 'delete', title: string, message: string) => {
     setModalType(type);
     setModalTitle(title);
@@ -111,14 +121,16 @@ export default function DeliveryRegister() {
     setModalVisible(true);
   };
 
+  // Función para ejecutar al enviar el formulario
   const onSubmit = async (data: DeliveryFormData) => {
     try {
-      setLoading(true);
+      setLoading(true); // Mostrar loader
 
       let userId: number;
       let userToken: string;
       let userData: any;
 
+      // Si no hay usuario autenticado, registrar uno nuevo
       if (!existingUser) {
         const userPayload = {
           username: data.username,
@@ -127,21 +139,25 @@ export default function DeliveryRegister() {
           password: data.password
         };
 
+        // Registro via API
         const userRes = await api.post('/auth/register', userPayload);
         userId = userRes.data.user.id;
         userToken = userRes.data.token;
         userData = userRes.data.user;
 
+        // Login automático con el nuevo token y datos
         await login(userToken, userData);
       } else {
+        // Si ya hay usuario logueado usar sus datos
         userId = existingUser.id;
         userToken = useAuth().token!;
         userData = existingUser;
       }
 
+      // Payload con datos adicionales para crear perfil de repartidor
       const driverPayload = {
         user_id: userId,
-        birth_date: data.birth_date.toISOString().split('T')[0],
+        birth_date: data.birth_date.toISOString().split('T')[0], // Formatear fecha ISO sin hora
         vehicle_type: data.vehicle_type,
         address: data.address,
         availability_days: data.availability_days,
@@ -149,40 +165,48 @@ export default function DeliveryRegister() {
         end_time: data.end_time
       };
 
+      // Registro de repartidor en backend con autenticación
       await api.post('/delivery/register', driverPayload, {
         headers: {
           Authorization: `Bearer ${userToken}`
         }
       });
 
+      // Mostrar modal de éxito
       showModal('info', '¡Éxito!', '¡Ya sos repartidor! Ahora podés recibir pedidos en la app.');
 
+      // Redireccionar a pantalla principal después de 2 segundos
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 2000);
 
     } catch (error: any) {
+      // En caso de error mostrar mensaje
       console.error('Error en registro:', error);
       const errorMsg = error.response?.data?.error || 'Error al registrar como repartidor';
       showModal('delete', 'Error', errorMsg);
     } finally {
-      setLoading(false);
+      setLoading(false); // Ocultar loader
     }
   };
 
+  // Función para alternar la selección de días disponibles en el formulario
   const toggleDay = (day: string) => {
     const currentDays = watch('availability_days') || [];
     let newDays: string[];
 
+    // Si ya está seleccionado se quita, si no se agrega
     if (currentDays.includes(day)) {
       newDays = currentDays.filter(d => d !== day);
     } else {
       newDays = [...currentDays, day];
     }
 
+    // Actualizar el formulario con los días nuevos y validar
     setValue('availability_days', newDays, { shouldValidate: true });
   };
 
+  // Genera opciones de horario en formato HH:mm para seleccionar
   const generateTimeOptions = () => {
     const times: string[] = [];
     for (let i = 0; i < 24; i++) {
@@ -192,12 +216,14 @@ export default function DeliveryRegister() {
     return times;
   };
 
-  const timeOptions = generateTimeOptions();
+  const timeOptions = generateTimeOptions(); // Guardar opciones a usar en Picker
 
+  // Renderizado del formulario dentro de ScrollView para scroll en móviles
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.scaledContainer}>
         <View style={styles.card}>
+          {/* Logo y título */}
           <View style={styles.logoContainer}>
             <Text style={styles.logo}>M</Text>
           </View>
@@ -205,9 +231,10 @@ export default function DeliveryRegister() {
           <Text style={styles.title}>Ser Repartidor</Text>
           <Text style={styles.subtitle}>Completa tus datos para empezar a repartir</Text>
 
-          {/* Información Básica */}
+          {/* Sección Información Personal */}
           <Text style={styles.sectionTitle}>Información Personal</Text>
 
+          {/* Solo mostrar campos usuario y contraseña si no hay usuario logueado */}
           {!existingUser && (
             <>
               <View style={styles.row}>
@@ -318,7 +345,7 @@ export default function DeliveryRegister() {
             </>
           )}
 
-          {/* Fecha de Nacimiento - Web */}
+          {/* Fecha de nacimiento con input tipo date para web */}
           <Controller
             control={control}
             name="birth_date"
@@ -330,7 +357,6 @@ export default function DeliveryRegister() {
                   style={{
                     ...styles.webDateInput,
                     ...(errors.birth_date ? styles.inputError : {}),
-                    // Estilos específicos para web
                     fontFamily: 'system-ui, -apple-system, sans-serif',
                     outline: 'none',
                     transition: 'border-color 0.2s',
@@ -347,11 +373,11 @@ export default function DeliveryRegister() {
               </>
             )}
           />
-          
-          {/* Información de Repartidor */}
+
+          {/* Sección información adicional para repartidor */}
           <Text style={styles.sectionTitle}>Información de Repartidor</Text>
 
-          {/* Tipo de Vehículo */}
+          {/* Selector para tipo de vehículo */}
           <Controller
             control={control}
             name="vehicle_type"
@@ -384,7 +410,7 @@ export default function DeliveryRegister() {
             )}
           />
 
-          {/* Dirección */}
+          {/* Input para dirección completa */}
           <Controller
             control={control}
             name="address"
@@ -405,10 +431,10 @@ export default function DeliveryRegister() {
             )}
           />
 
-          {/* Disponibilidad */}
+          {/* Disponibilidad días y horarios */}
           <Text style={styles.sectionTitle}>Disponibilidad</Text>
 
-          {/* Días de la semana */}
+          {/* Selector de días de la semana con checkboxes */}
           <Text style={styles.label}>📅 Días disponibles:</Text>
           <View style={styles.daysContainer}>
             {daysOfWeek.map(day => (
@@ -436,7 +462,7 @@ export default function DeliveryRegister() {
           </View>
           {errors.availability_days && <Text style={styles.error}>{errors.availability_days.message}</Text>}
 
-          {/* Horarios */}
+          {/* Selector de horario inicio y fin */}
           <View style={styles.row}>
             <View style={styles.halfInput}>
               <Controller
@@ -499,7 +525,7 @@ export default function DeliveryRegister() {
             </View>
           </View>
 
-          {/* Botón de envío */}
+          {/* Botón para enviar formulario, con indicador de carga cuando está procesando */}
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleSubmit(onSubmit)}
@@ -512,6 +538,7 @@ export default function DeliveryRegister() {
             )}
           </TouchableOpacity>
 
+          {/* Botón para volver atrás */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -520,6 +547,7 @@ export default function DeliveryRegister() {
           </TouchableOpacity>
         </View>
 
+        {/* Modal personalizado para mostrar información o errores */}
         <CustomModal
           visible={modalVisible}
           type={modalType}
@@ -534,6 +562,7 @@ export default function DeliveryRegister() {
   );
 }
 
+// Estilos de los componentes para la UI usando StyleSheet de React Native
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
@@ -668,7 +697,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
     fontSize: 14,
     marginBottom: 6,
-    // Eliminamos outline y transition que no son compatibles
   },
   label: {
     fontSize: 13,

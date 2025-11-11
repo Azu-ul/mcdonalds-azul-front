@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Switch, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../../config/api';
+import CustomModal from '../../../components/CustomModal';
 
-// Definir tipos para los datos
 type User = {
   id: number;
   full_name?: string;
@@ -65,14 +65,14 @@ type Flyer = {
 
 type FormData = User | Product | Restaurant | Coupon | Flyer;
 
-// Helper para formatear fechas para input date
+// Función para formatear las fechas para el input
 const formatDateForInput = (dateString?: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toISOString().split('T')[0];
 };
 
-// Helper para convertir de input date a ISO string
+// Función para formatear las fechas de la base de datos
 const formatInputToISO = (dateString: string) => {
   if (!dateString) return null;
   return new Date(dateString + 'T00:00:00').toISOString();
@@ -83,13 +83,27 @@ const EditScreen = () => {
   const { type, id } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-const [formData, setFormData] = useState<FormData>({} as FormData);
+  const [formData, setFormData] = useState<FormData>({} as FormData);
 
-  // Cargar datos del item
+  const [modalState, setModalState] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'delete';
+    title: string;
+    message: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
   useEffect(() => {
     fetchItem();
   }, [type, id]);
 
+  // Función para cargar el elemento
   const fetchItem = async () => {
     try {
       let endpoint = '';
@@ -119,12 +133,22 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
       setFormData(res.data);
     } catch (err) {
       console.error('Error al cargar datos:', err);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudieron cargar los datos',
+        onConfirm: () => {
+          setModalState(prev => ({ ...prev, visible: false }));
+          router.back();
+        }
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  // Función para guardar el elemento
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -150,27 +174,42 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
       }
 
       await api.put(endpoint, formData);
-      Alert.alert('Éxito', 'Cambios guardados correctamente');
-      router.back();
+      setModalState({
+        visible: true,
+        type: 'success',
+        title: 'Éxito',
+        message: 'Cambios guardados correctamente',
+        onConfirm: () => {
+          setModalState(prev => ({ ...prev, visible: false }));
+          router.back();
+        }
+      });
     } catch (err: any) {
       console.error('Error al guardar:', err);
       const errorMessage = err.response?.data?.error || 'No se pudieron guardar los cambios';
-      Alert.alert('Error', errorMessage);
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  // Helper para acceder a propiedades con type safety
-   const getProperty = (key: string): any => {
-        return (formData as any)[key];
-    };
+// Función para obtener el valor de una propiedad
+  const getProperty = (key: string): any => {
+    return (formData as any)[key];
+  };
 
-    const setProperty = (key: string, value: any) => {
-        setFormData((prev) => ({ ...prev, [key]: value }));
-    };
+ // Función para manejar cambios en una propiedad 
+  const setProperty = (key: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
 
-  // Componente de fecha para web
+  // Función para manejar cambios en las fechas
   const DateInput = ({ 
     label, 
     value, 
@@ -214,7 +253,7 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
     );
   };
 
-  // Renderizar formularios específicos
+  // Funciones para renderizar los formularios
   const renderUserForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Nombre completo</Text>
@@ -246,6 +285,7 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
     </View>
   );
 
+  // Función para renderizar el formulario de producto
   const renderProductForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Nombre</Text>
@@ -285,6 +325,7 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
     </View>
   );
 
+  // Función para renderizar el formulario de restaurante
   const renderRestaurantForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Nombre del restaurante</Text>
@@ -370,6 +411,7 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
     </View>
   );
 
+  // Función para renderizar el formulario de cupones
   const renderCouponForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Título del cupón</Text>
@@ -379,15 +421,6 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
         onChangeText={(text) => setProperty('title', text)}
         placeholder="Título del cupón"
       />
-      
-      {/*<Text style={styles.label}>Código</Text>
-      <TextInput
-        style={styles.input}
-        value={getProperty('code') as string || ''}
-        onChangeText={(text) => setProperty('code', text)}
-        placeholder="CÓDIGO123"
-        autoCapitalize="characters"
-      />*/}
       
       <Text style={styles.label}>Descripción</Text>
       <TextInput
@@ -489,6 +522,7 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
     </View>
   );
 
+  // Función para renderizar el formulario de flyers
   const renderFlyerForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Título del flyer</Text>
@@ -570,6 +604,7 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
     </View>
   );
 
+  // Función para renderizar el formulario general
   const renderForm = () => {
     switch (type) {
       case 'usuarios':
@@ -618,6 +653,16 @@ const [formData, setFormData] = useState<FormData>({} as FormData);
       <ScrollView style={styles.content}>
         {renderForm()}
       </ScrollView>
+
+      <CustomModal
+        visible={modalState.visible}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        showCancel={modalState.showCancel}
+        onConfirm={modalState.onConfirm}
+        onCancel={() => setModalState(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };

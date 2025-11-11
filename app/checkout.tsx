@@ -1,38 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Modal, Dimensions
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import api from '../config/api';
+import { useRouter } from 'expo-router'; // Hook para la navegación
+import api from '../config/api'; // Configuración para llamadas a API backend
 
+// Obtener ancho de pantalla para estilos responsivos
 const { width } = Dimensions.get('window');
 
 export default function Checkout() {
-  const router = useRouter();
+  const router = useRouter(); // Para manejar navegación
 
+  // Estados para cargar datos, proceso de pago y mostrar éxito
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Estados para información del carrito, entrega, método de pago y propina
   const [cart, setCart] = useState<any>(null);
   const [delivery, setDelivery] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [tip, setTip] = useState(0);
 
+  // Carga inicial de los datos necesarios para el checkout
   useEffect(() => {
     loadCheckout();
   }, []);
 
+  // Función que consulta API para obtener detalles del carrito y entrega
   const loadCheckout = async () => {
     try {
       setLoading(true);
       const res = await api.get('/checkout');
-      console.log('Checkout response:', res.data);
       setCart(res.data.cart);
       setDelivery(res.data.delivery);
-      console.log('Delivery set to:', res.data.delivery);
     } catch (error) {
+      // En caso de error regresa a pantalla anterior
       console.error('Error loading checkout:', error);
       router.back();
     } finally {
@@ -40,17 +50,18 @@ export default function Checkout() {
     }
   };
 
+  // Función para manejar el pago según método y propina seleccionados
   const handlePayment = async () => {
     try {
       setProcessing(true);
-
       await api.post('/checkout/complete', {
         payment_method: paymentMethod,
-        tip
+        tip,
       });
 
       setShowSuccess(true);
 
+      // Después de 5 segundos oculta éxito y vuelve al inicio
       setTimeout(() => {
         setShowSuccess(false);
         router.replace('/');
@@ -63,6 +74,7 @@ export default function Checkout() {
     }
   };
 
+  // Mientras carga muestra un indicador de actividad
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -71,25 +83,29 @@ export default function Checkout() {
     );
   }
 
+  // Determina si la entrega es retiro en local
   const isPickup = delivery?.type === 'pickup';
-  
-  // ✅ Generar URL del mapa SOLO si hay coordenadas válidas
+
+  // Construye URL para map embed si hay coordenadas disponibles
   const mapUrl = delivery?.latitude && delivery?.longitude
     ? `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${delivery.latitude},${delivery.longitude}&zoom=15`
     : null;
 
+  // Renderizado principal del componente
   return (
     <View style={styles.container}>
+      {/* Header con botón para volver y título */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalle del pago</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 40 }} /> {/* Espacio para balancear */}
       </View>
 
+      {/* Scroll con contenido de checkout */}
       <ScrollView style={styles.scrollView}>
-        {/* Dirección/Restaurante */}
+        {/* Sección dirección o local de retiro */}
         {delivery && (
           <TouchableOpacity
             style={styles.deliverySection}
@@ -112,9 +128,11 @@ export default function Checkout() {
           </TouchableOpacity>
         )}
 
+        {/* Sección para método de pago */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Método de pago</Text>
 
+          {/* Opción tarjeta */}
           <TouchableOpacity
             style={[styles.paymentOption, paymentMethod === 'card' && styles.paymentOptionSelected]}
             onPress={() => setPaymentMethod('card')}
@@ -123,6 +141,7 @@ export default function Checkout() {
             <Text style={styles.paymentText}>Pago con tarjeta</Text>
           </TouchableOpacity>
 
+          {/* Opción efectivo */}
           <TouchableOpacity
             style={[styles.paymentOption, paymentMethod === 'cash' && styles.paymentOptionSelected]}
             onPress={() => setPaymentMethod('cash')}
@@ -132,6 +151,7 @@ export default function Checkout() {
           </TouchableOpacity>
         </View>
 
+        {/* Sección para dar propina si no es pickup */}
         {!isPickup && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Propina para tu repartidor</Text>
@@ -161,6 +181,7 @@ export default function Checkout() {
           </View>
         )}
 
+        {/* Resumen de pedido mostrando subtotal, envío, propina y total */}
         <View style={styles.summarySection}>
           <Text style={styles.sectionTitle}>Resumen de tu pedido</Text>
 
@@ -195,9 +216,10 @@ export default function Checkout() {
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 100 }} /> {/* Espacio para footer */}
       </ScrollView>
 
+      {/* Footer con botón para pagar */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.payButton, processing && styles.payButtonDisabled]}
@@ -212,11 +234,8 @@ export default function Checkout() {
         </TouchableOpacity>
       </View>
 
-      <Modal
-        visible={showSuccess}
-        transparent
-        animationType="fade"
-      >
+      {/* Modal para mostrar confirmación de pedido exitoso */}
+      <Modal visible={showSuccess} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.successIcon}>✅</Text>
@@ -234,7 +253,7 @@ export default function Checkout() {
   );
 }
 
-// Agregar estos estilos nuevos
+// Estilos usados en el componente
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -251,29 +270,6 @@ const styles = StyleSheet.create({
   backIcon: { fontSize: 24, color: '#292929' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#292929' },
   scrollView: { flex: 1 },
-  mapContainer: {
-    height: 250,
-    backgroundColor: '#E0E0E0',
-  },
-  // ✅ NUEVOS ESTILOS para cuando no hay mapa
-  noMapContainer: {
-    height: 200,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  noMapIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  noMapText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
   deliverySection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -287,7 +283,6 @@ const styles = StyleSheet.create({
   deliveryLabel: { fontSize: 12, color: '#666', marginBottom: 2 },
   deliveryAddress: { fontSize: 16, fontWeight: '600', color: '#292929', marginBottom: 4 },
   deliverySubtext: { fontSize: 13, color: '#666', lineHeight: 18 },
-  // ✅ NUEVOS ESTILOS para el botón de cambiar
   changeContainer: {
     flexDirection: 'row',
     alignItems: 'center',

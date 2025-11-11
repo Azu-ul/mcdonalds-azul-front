@@ -1,14 +1,16 @@
 // /app/admin/create/[type].tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../../config/api';
+import CustomModal from '../../components/CustomModal';
 
 type FormData = {
   [key: string]: any;
 };
+
 
 const CreateScreen = () => {
   const router = useRouter();
@@ -18,6 +20,21 @@ const CreateScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
   const [dateField, setDateField] = useState<'start_date' | 'end_date'>('start_date');
 
+  const [modalState, setModalState] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'delete';
+    title: string;
+    message: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  // Función para guardar el elemento
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -27,7 +44,6 @@ const CreateScreen = () => {
         case 'usuarios':
         case 'repartidores':
           endpoint = `/admin/usuarios`;
-          // Para repartidores, agregar el rol
           if (type === 'repartidores') {
             formData.role = 'repartidor';
           }
@@ -46,22 +62,39 @@ const CreateScreen = () => {
           break;
       }
 
+      // Enviar la solicitud POST
       await api.post(endpoint, formData);
-      Alert.alert('Éxito', 'Elemento creado correctamente');
-      router.back();
+      setModalState({
+        visible: true,
+        type: 'success',
+        title: 'Éxito',
+        message: 'Elemento creado correctamente',
+        onConfirm: () => {
+          setModalState(prev => ({ ...prev, visible: false }));
+          router.back();
+        }
+      });
     } catch (err: any) {
       console.error('Error al crear:', err);
       const errorMessage = err.response?.data?.error || 'No se pudo crear el elemento';
-      Alert.alert('Error', errorMessage);
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
     } finally {
       setSaving(false);
     }
   };
 
+  // Función para manejar cambios en los campos
   const setProperty = (key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
+  // Función para manejar cambios en las fechas
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker({ start: false, end: false });
     
@@ -71,17 +104,19 @@ const CreateScreen = () => {
     }
   };
 
+  // Función para mostrar el modal de fechas
   const showDatePickerModal = (field: 'start_date' | 'end_date') => {
     setDateField(field);
     setShowDatePicker({ start: field === 'start_date', end: field === 'end_date' });
   };
 
+  // Función para formatear las fechas
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Seleccionar fecha';
     return new Date(dateString).toLocaleDateString('es-ES');
   };
 
-  // Renderizar formularios
+  // Funciones para renderizar los formularios
   const renderUserForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Nombre completo *</Text>
@@ -122,6 +157,7 @@ const CreateScreen = () => {
     </View>
   );
 
+  // Función para renderizar el formulario de productos
   const renderProductForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Nombre del producto *</Text>
@@ -170,6 +206,7 @@ const CreateScreen = () => {
     </View>
   );
 
+  // Función para renderizar el formulario de restaurantes
   const renderRestaurantForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Nombre del restaurante *</Text>
@@ -255,6 +292,7 @@ const CreateScreen = () => {
     </View>
   );
 
+  // Función para renderizar el formulario de cupones
   const renderCouponForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Título del cupón *</Text>
@@ -382,6 +420,7 @@ const CreateScreen = () => {
     </View>
   );
 
+  // Función para renderizar el formulario de flyers
   const renderFlyerForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Título del flyer *</Text>
@@ -471,6 +510,7 @@ const CreateScreen = () => {
     </View>
   );
 
+  // Función para renderizar el formulario general
   const renderForm = () => {
     switch (type) {
       case 'usuarios':
@@ -493,6 +533,7 @@ const CreateScreen = () => {
     }
   };
 
+  // Función para obtener el título de la pantalla
   const getTitle = () => {
     switch (type) {
       case 'usuarios': return 'Crear Usuario';
@@ -523,7 +564,6 @@ const CreateScreen = () => {
         {renderForm()}
       </ScrollView>
 
-      {/* Date Picker */}
       {(showDatePicker.start || showDatePicker.end) && (
         <DateTimePicker
           value={new Date()}
@@ -532,11 +572,20 @@ const CreateScreen = () => {
           onChange={handleDateChange}
         />
       )}
+
+      <CustomModal
+        visible={modalState.visible}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        showCancel={modalState.showCancel}
+        onConfirm={modalState.onConfirm}
+        onCancel={() => setModalState(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };
 
-// Estilos (los mismos que en el edit screen)
 const styles = StyleSheet.create({
   container: {
     flex: 1,

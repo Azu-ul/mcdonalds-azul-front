@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Image, Alert, ActivityIndicator, Platform,
+  Image, ActivityIndicator, Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,7 +17,6 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-// Components
 import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileImageSection from '../components/profile/ProfileImageSection';
 import PersonalInfoCard from '../components/profile/PersonalInfoCard';
@@ -45,6 +44,7 @@ type ProfileFormData = {
   email?: string;
 };
 
+// Validaciones con yup
 const profileSchema = yup.object({
   email: yup.string()
     .transform((value) => value?.trim() || '')
@@ -67,13 +67,12 @@ const profileSchema = yup.object({
     .matches(/^[\+\d\s\-()]*$/, 'Solo números, espacios, paréntesis y guiones'),
 }).required();
 
+// Componente principal
 export default function Profile() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { updateUser, logout, isRepartidor } = useAuth();
-  const { isAdmin } = useAuth();
+  const { updateUser, logout, isRepartidor, isAdmin } = useAuth();
 
-  // Estados
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -92,22 +91,32 @@ export default function Profile() {
   });
   const [editingUsername, setEditingUsername] = useState(false);
   const [username, setUsername] = useState('');
-  const [address, setAddress] = useState(''); // Siempre inicializado como string vacío
+  const [address, setAddress] = useState('');
   const [modals, setModals] = useState({
     logout: false,
     deleteAccount: false,
     deleteDocument: false,
     imagePicker: false,
+    error: false,
+    success: false,
+    info: false,
   });
   const [deleteCountdown, setDeleteCountdown] = useState(10);
+  const [modalContent, setModalContent] = useState({
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'info' | 'delete',
+    onConfirm: undefined as (() => void) | undefined,
+  });
 
+  // Formulario de perfil de usuario 
   const { control, handleSubmit, setValue, formState: { errors } } = useForm<ProfileFormData>({
     resolver: yupResolver(profileSchema),
     mode: 'onBlur',
     defaultValues: { email: '', full_name: '', phone: '' }
   });
 
-  // Helper para actualizar loading states
+  // Manejo de estados
   const updateLoadingState = (key: keyof typeof loadingStates, value: boolean) => {
     setLoadingStates(prev => ({ ...prev, [key]: value }));
   };
@@ -121,7 +130,17 @@ export default function Profile() {
     setModals(prev => ({ ...prev, [key]: value }));
   };
 
-  // Token management
+  const showModal = (
+    type: 'success' | 'error' | 'info',
+    title: string,
+    message: string,
+    onConfirm?: () => void
+  ) => {
+    setModalContent({ type, title, message, onConfirm });
+    updateModal(type, true);
+  };
+
+  // Manejo de token
   const getToken = async () => {
     if (params.token) {
       const urlToken = Array.isArray(params.token) ? params.token[0] : params.token;
@@ -133,7 +152,7 @@ export default function Profile() {
     return token;
   };
 
-  // Effects
+  // Manejo de permisos
   useEffect(() => {
     (async () => {
       await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -142,6 +161,7 @@ export default function Profile() {
     })();
   }, []);
 
+  // Manejo de cuenta
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (modals.deleteAccount && deleteCountdown > 0) {
@@ -150,6 +170,7 @@ export default function Profile() {
     return () => { if (interval) clearInterval(interval); };
   }, [modals.deleteAccount, deleteCountdown]);
 
+  // Carga de pedidos 
   const loadOrders = async () => {
     try {
       setLoadingOrders(true);
@@ -172,11 +193,12 @@ export default function Profile() {
     }, [])
   );
 
+  // Manejo de pedido
   const handleViewOrder = (orderId: number) => {
-    Alert.alert('Pedido', `Ver detalles del pedido #${orderId}`);
-    // Aquí podrías navegar a una pantalla de detalle: router.push(`/orders/${orderId}`)
+    showModal('info', 'Pedido', `Ver detalles del pedido #${orderId}`);
   };
 
+  // Carga de perfil
   const loadUserProfile = async () => {
     try {
       setLoading(true);
@@ -204,9 +226,10 @@ export default function Profile() {
     }
   };
 
+  // Actualización de nombre de usuario
   const handleUpdateUsername = async () => {
     if (!username.trim() || username.length < 3) {
-      Alert.alert('Error', 'El nombre debe tener al menos 3 caracteres');
+      showModal('error', 'Error', 'El nombre debe tener al menos 3 caracteres');
       return;
     }
 
@@ -218,15 +241,16 @@ export default function Profile() {
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       await updateUser({ username: res.data.user.username });
       setEditingUsername(false);
-      Alert.alert('Éxito', 'Nombre actualizado');
+      showModal('success', 'Éxito', 'Nombre actualizado');
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.error || 'Error al actualizar');
+      showModal('error', 'Error', error?.response?.data?.error || 'Error al actualizar');
       setUsername(user?.username || '');
     } finally {
       updateLoadingState('updatingProfile', false);
     }
   };
 
+  // Actualización de perfil
   const handleUpdateProfile = async (data: ProfileFormData) => {
     try {
       updateLoadingState('updatingProfile', true);
@@ -236,7 +260,7 @@ export default function Profile() {
       if (data.phone?.trim()) payload.phone = data.phone.trim();
 
       if (Object.keys(payload).length === 0) {
-        Alert.alert('Error', 'No hay datos para actualizar');
+        showModal('error', 'Error', 'No hay datos para actualizar');
         return;
       }
 
@@ -248,18 +272,18 @@ export default function Profile() {
       setValue('phone', updatedUser.phone || '');
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       await updateUser(payload);
-      Alert.alert('Éxito', 'Perfil actualizado');
+      showModal('success', 'Éxito', 'Perfil actualizado');
       updateSaveState('profile', true);
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.error || 'Error al actualizar');
+      showModal('error', 'Error', error?.response?.data?.error || 'Error al actualizar');
     } finally {
       updateLoadingState('updatingProfile', false);
     }
   };
 
-  // Tipos compatibles
   type PlatformFile = File | { uri: string; name: string; type: string };
 
+  // Subida de archivos
   const uploadFile = async (
     file: PlatformFile,
     fieldName: 'image' | 'document',
@@ -268,7 +292,6 @@ export default function Profile() {
     const formData = new FormData();
 
     if ('uri' in file) {
-      // 📱 React Native
       const uri = Platform.OS === 'ios' && !file.uri.startsWith('file://')
         ? `file://${file.uri}`
         : file.uri;
@@ -278,7 +301,6 @@ export default function Profile() {
         type: file.type,
       } as any);
     } else {
-      // 🌐 Web - el file ya es un objeto File de JavaScript
       console.log('📤 Subiendo archivo web:', file.name, file.type, file.size);
       formData.append(fieldName, file, file.name);
     }
@@ -293,7 +315,6 @@ export default function Profile() {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        // NO incluir Content-Type - fetch lo maneja automáticamente
       },
       body: formData,
     });
@@ -313,44 +334,44 @@ export default function Profile() {
       : data.document_image_url;
   };
 
-  // Foto de perfil - CAMBIAR ENDPOINT
+  // Subida de imagen de perfil
   const uploadProfileImageFile = async (file: PlatformFile) => {
     try {
       updateLoadingState('profileImage', true);
-      const imageUrl = await uploadFile(file, 'image', '/profile/image'); // CAMBIO AQUÍ
+      const imageUrl = await uploadFile(file, 'image', '/profile/image');
 
       const updatedUser = { ...user, profile_image_url: imageUrl };
       setUser(updatedUser as User);
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
       await updateUser({ profile_image_url: imageUrl });
-      Alert.alert('Éxito', 'Foto actualizada');
+      showModal('success', 'Éxito', 'Foto actualizada');
     } catch (err: any) {
       console.error('Upload error:', err);
-      Alert.alert('Error', err.message || 'No se pudo subir la imagen');
+      showModal('error', 'Error', err.message || 'No se pudo subir la imagen');
     } finally {
       updateLoadingState('profileImage', false);
     }
   };
 
-  // Documento - CAMBIAR ENDPOINT
+  // Subida de documento
   const uploadDocumentFile = async (file: PlatformFile) => {
     try {
       updateLoadingState('document', true);
-      const docUrl = await uploadFile(file, 'document', '/profile/document'); // CAMBIO AQUÍ
+      const docUrl = await uploadFile(file, 'document', '/profile/document');
 
       const updatedUser = { ...user, document_image_url: docUrl };
       setUser(updatedUser as User);
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      Alert.alert('Éxito', 'Documento subido');
+      showModal('success', 'Éxito', 'Documento subido');
     } catch (err: any) {
       console.error('Document upload error:', err);
-      Alert.alert('Error', err.message || 'No se pudo subir el documento');
+      showModal('error', 'Error', err.message || 'No se pudo subir el documento');
     } finally {
       updateLoadingState('document', false);
     }
   };
 
-  // Reemplazar la función pickDocument completa
+  // Selección de documento
   const pickDocument = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -365,15 +386,12 @@ export default function Profile() {
         const asset = result.assets[0];
         const uri = asset.uri;
 
-        // En web, expo-image-picker puede devolver base64
         if (Platform.OS === 'web' && uri.startsWith('data:')) {
           console.log('🔄 Convirtiendo base64 a File...');
 
-          // Convertir base64 a blob
           const response = await fetch(uri);
           const blob = await response.blob();
 
-          // Crear un File desde el blob
           const filename = `document-${Date.now()}.jpg`;
           const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
 
@@ -381,7 +399,6 @@ export default function Profile() {
 
           await uploadDocumentFile(file);
         } else {
-          // React Native normal
           const filename = uri.split('/').pop() || 'doc.jpg';
           const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
           const type = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
@@ -393,11 +410,11 @@ export default function Profile() {
       }
     } catch (error) {
       console.error('❌ Error picking document:', error);
-      Alert.alert('Error', 'No se pudo seleccionar el documento');
+      showModal('error', 'Error', 'No se pudo seleccionar el documento');
     }
   };
 
-  // También actualizar pickImage para que maneje base64 correctamente
+  // Selección de imagen
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -413,15 +430,13 @@ export default function Profile() {
         const asset = result.assets[0];
         const uri = asset.uri;
 
-        // En web, expo-image-picker puede devolver base64
+        // Conversión de base64 a File
         if (Platform.OS === 'web' && uri.startsWith('data:')) {
           console.log('🔄 Convirtiendo base64 a File...');
 
-          // Convertir base64 a blob
           const response = await fetch(uri);
           const blob = await response.blob();
 
-          // Crear un File desde el blob
           const filename = `profile-${Date.now()}.jpg`;
           const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
 
@@ -429,7 +444,6 @@ export default function Profile() {
 
           await uploadProfileImageFile(file);
         } else {
-          // React Native normal
           const filename = uri.split('/').pop() || 'photo.jpg';
           const match = /\.(\w+)$/.exec(filename);
           const type = match ? `image/${match[1]}` : 'image/jpeg';
@@ -441,10 +455,11 @@ export default function Profile() {
       }
     } catch (error) {
       console.error('❌ Error picking image:', error);
-      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+      showModal('error', 'Error', 'No se pudo seleccionar la imagen');
     }
   };
 
+  // Tomar foto
   const takePhoto = async () => {
     try {
       const result = await ImagePicker.launchCameraAsync({
@@ -464,12 +479,13 @@ export default function Profile() {
     }
   };
 
+  // Obtener ubicación
   const handleGetLocation = async () => {
     try {
       updateLoadingState('location', true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Se necesita acceso a la ubicación');
+        showModal('error', 'Permiso denegado', 'Se necesita acceso a la ubicación');
         return;
       }
 
@@ -485,14 +501,15 @@ export default function Profile() {
       setUser(updatedUser as User);
       setAddress(addressStr);
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      Alert.alert('Éxito', `Ubicación actualizada\n${addressStr}`);
+      showModal('success', 'Éxito', `Ubicación actualizada\n${addressStr}`);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo obtener la ubicación');
+      showModal('error', 'Error', 'No se pudo obtener la ubicación');
     } finally {
       updateLoadingState('location', false);
     }
   };
 
+  // Obtener dirección a partir de coordenadas
   const getAddressFromCoords = async (lat: number, lng: number): Promise<string> => {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
@@ -518,9 +535,10 @@ export default function Profile() {
     }
   };
 
+  // Actualizar ubicación
   const handleUpdateLocation = async () => {
     if (!address.trim()) {
-      Alert.alert('Error', 'Ingresa una dirección');
+      showModal('error', 'Error', 'Ingresa una dirección');
       return;
     }
 
@@ -535,33 +553,37 @@ export default function Profile() {
       const updatedUser = { ...user, address: address.trim() };
       setUser(updatedUser as User);
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      Alert.alert('Éxito', 'Ubicación actualizada');
+      showModal('success', 'Éxito', 'Ubicación actualizada');
       updateSaveState('location', true);
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.error || 'Error al actualizar');
+      showModal('error', 'Error', error?.response?.data?.error || 'Error al actualizar');
     } finally {
       updateLoadingState('updatingLocation', false);
     }
   };
 
+  // Cerrar sesión
   const handleLogout = async () => {
     updateModal('logout', false);
     await logout();
     router.replace('/');
   };
 
+  // Eliminar cuenta
   const handleDeleteAccount = async () => {
     try {
       await api.delete('/profile');
       updateModal('deleteAccount', false);
       await logout();
-      Alert.alert('Cuenta eliminada', 'Tu cuenta ha sido eliminada permanentemente');
-      router.replace('/');
+      showModal('success', 'Cuenta eliminada', 'Tu cuenta ha sido eliminada permanentemente', () => {
+        router.replace('/');
+      });
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.error || 'No se pudo eliminar');
+      showModal('error', 'Error', error?.response?.data?.error || 'No se pudo eliminar');
     }
   };
 
+  // Obtener URL de la imagen
   const getProfileImageUrl = () => {
     if (!user?.profile_image_url) return null;
     let url = user.profile_image_url;
@@ -580,7 +602,7 @@ export default function Profile() {
     );
   }
 
-  // Función para eliminar el documento
+  // Eliminar documento
   const handleDeleteDocument = async () => {
     try {
       updateLoadingState('deletingDocument', true);
@@ -595,16 +617,14 @@ export default function Profile() {
       setUser(updatedUser as User);
       await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
 
-      Alert.alert('Éxito', 'Documento eliminado correctamente');
+      showModal('success', 'Éxito', 'Documento eliminado correctamente');
     } catch (error: any) {
       console.error('Error deleting document:', error);
-      Alert.alert('Error', error?.response?.data?.error || 'No se pudo eliminar el documento');
+      showModal('error', 'Error', error?.response?.data?.error || 'No se pudo eliminar el documento');
     } finally {
       updateLoadingState('deletingDocument', false);
     }
   };
-
-
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -728,6 +748,36 @@ export default function Profile() {
         onCancel={() => updateModal('deleteDocument', false)}
       />
 
+      <CustomModal
+        visible={modals.error}
+        type="error"
+        title={modalContent.title}
+        message={modalContent.message}
+        confirmText="Aceptar"
+        onConfirm={modalContent.onConfirm}
+        onCancel={() => updateModal('error', false)}
+      />
+
+      <CustomModal
+        visible={modals.success}
+        type="success"
+        title={modalContent.title}
+        message={modalContent.message}
+        confirmText="Aceptar"
+        onConfirm={modalContent.onConfirm}
+        onCancel={() => updateModal('success', false)}
+      />
+
+      <CustomModal
+        visible={modals.info}
+        type="info"
+        title={modalContent.title}
+        message={modalContent.message}
+        confirmText="Aceptar"
+        onConfirm={modalContent.onConfirm}
+        onCancel={() => updateModal('info', false)}
+      />
+
       <ImagePickerModal
         visible={modals.imagePicker}
         onClose={() => updateModal('imagePicker', false)}
@@ -739,16 +789,15 @@ export default function Profile() {
   );
 }
 
-// Cambiar estos estilos:
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F8F8' // Gris más claro
+    backgroundColor: '#F8F8F8'
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 30, // Más espacio
-    alignItems: 'center' // Centrar todo
+    paddingBottom: 30,
+    alignItems: 'center'
   },
   loadingContainer: {
     flex: 1,
@@ -758,11 +807,11 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     backgroundColor: '#fff',
-    borderWidth: 0, // Sin borde
+    borderWidth: 0,
     margin: 16,
     marginBottom: 12,
     padding: 18,
-    borderRadius: 12, // Más redondeado
+    borderRadius: 12,
     alignItems: 'center',
     width: '90%',
     maxWidth: 420,
@@ -775,7 +824,7 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#292929',
     fontSize: 16,
-    fontWeight: '500' // Menos bold
+    fontWeight: '500'
   },
   deleteButton: {
     backgroundColor: '#fff',

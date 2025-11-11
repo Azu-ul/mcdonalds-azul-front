@@ -1,60 +1,131 @@
 import React, { useState } from 'react';
 import {
-    View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
+    View, Text, TouchableOpacity, ScrollView, StyleSheet,
     ActivityIndicator
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
-import api from '../../config/api';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // Hook para navegación entre pantallas
+import { useAuth } from '../context/AuthContext'; // Contexto para datos de autenticación y permisos
+import api from '../../config/api'; // Configuración para llamadas API al backend
+import { Ionicons } from '@expo/vector-icons'; // Íconos vectoriales de Ionicons
+import CustomModal from '../components/CustomModal'; // Componente modal personalizado para mostrar alertas
 
+
+// Tipo para controlar el estado y configuración del modal personalizado
+type CustomModalState = {
+    visible: boolean; // Controla la visibilidad del modal
+    type: 'success' | 'error' | 'info' | 'delete'; // Tipo para cambiar apariencia y estilo
+    title: string; // Título mostrado en el modal
+    message: string; // Mensaje principal del modal
+    confirmText?: string; // Texto del botón de confirmación
+    showCancel?: boolean; // Indica si se muestra botón cancelar
+    onConfirm?: () => void; // Función para ejecutar cuando se confirma
+};
+
+
+// Componente principal Panel de Simulación
 export default function SimulationPanel() {
-    const router = useRouter();
-    const { isRepartidor } = useAuth();
-    const [loading, setLoading] = useState(false);
-    const [generatedOrders, setGeneratedOrders] = useState<any[]>([]);
+    const router = useRouter(); // Hook para controlar navegación
+    const { isRepartidor } = useAuth(); // Verifica si el usuario tiene rol repartidor
+    const [loading, setLoading] = useState(false); // Estado para mostrar indicador de carga
+    const [generatedOrders, setGeneratedOrders] = useState<any[]>([]); // Lista de pedidos simulados generados
+    
+    const [customModal, setCustomModal] = useState<CustomModalState>({
+        visible: false, // Por defecto modal oculto
+        type: 'info', // Tipo por defecto info
+        title: '', // Sin título inicial
+        message: '', // Sin mensaje inicial
+    });
 
+    // Función para mostrar el modal con configuración dinámica
+    const showCustomModal = (config: Omit<CustomModalState, 'visible'>) => {
+        setCustomModal({ ...config, visible: true });
+    };
+
+    // Función para ocultar el modal
+    const hideCustomModal = () => {
+        setCustomModal(prev => ({ ...prev, visible: false }));
+    };
+
+    // Función para generar un único pedido simulado
     const generateSingleOrder = async () => {
         try {
-            setLoading(true);
-            const res = await api.post('/simulation/orders/generate');
-            setGeneratedOrders(prev => [res.data.order, ...prev.slice(0, 4)]);
-            Alert.alert('✅ Éxito', 'Pedido simulado generado');
+            setLoading(true); // Mostrar loader mientras se genera
+            const res = await api.post('/simulation/orders/generate'); // Llamada API para generar pedido
+            setGeneratedOrders(prev => [res.data.order, ...prev.slice(0, 4)]); // Agregar pedido nuevo al inicio, mantener máximo 5
+
+            showCustomModal({
+                type: 'success',
+                title: '✅ Éxito',
+                message: 'Pedido simulado generado',
+                onConfirm: hideCustomModal,
+            });
         } catch (error: any) {
-            Alert.alert('❌ Error', error.response?.data?.error || 'No se pudo generar el pedido');
+            // En caso de error mostrar modal con mensaje de error recibido de backend o por defecto
+            showCustomModal({
+                type: 'error',
+                title: '❌ Error',
+                message: error.response?.data?.error || 'No se pudo generar el pedido',
+                onConfirm: hideCustomModal,
+            });
         } finally {
-            setLoading(false);
+            setLoading(false); // Ocultar loader al finalizar
         }
     };
 
+    // Función para generar múltiples pedidos simulados (3 en este caso)
     const generateMultipleOrders = async () => {
         try {
-            setLoading(true);
-            const res = await api.post('/simulation/orders/generate-multiple', { count: 3 });
-            const newOrders = res.data.orders || [];
-            setGeneratedOrders(prev => [...newOrders, ...prev.slice(0, 2)]);
-            Alert.alert('✅ Éxito', `${newOrders.length} pedidos generados`);
+            setLoading(true); // Mostrar loader
+            const res = await api.post('/simulation/orders/generate-multiple', { count: 3 }); // Llamada API con parámetro cantidad
+            const newOrders = res.data.orders || []; // Obtener pedidos recibidos
+            setGeneratedOrders(prev => [...newOrders, ...prev.slice(0, 2)]); // Agregar nuevos pedidos limitando total a 5
+
+            showCustomModal({
+                type: 'success',
+                title: '✅ Éxito',
+                message: `${newOrders.length} pedidos generados`,
+                onConfirm: hideCustomModal,
+            });
         } catch (error: any) {
             console.error('Error generando múltiples pedidos:', error);
-            Alert.alert('❌ Error', error.response?.data?.error || 'No se pudo generar los pedidos');
+            showCustomModal({
+                type: 'error',
+                title: '❌ Error',
+                message: error.response?.data?.error || 'No se pudo generar los pedidos',
+                onConfirm: hideCustomModal,
+            });
         } finally {
             setLoading(false);
         }
     };
 
+    // Función para limpiar pedidos generados antiguos
     const cleanupOrders = async () => {
         try {
             setLoading(true);
-            const res = await api.delete('/simulation/orders/cleanup');
-            Alert.alert('🧹 Limpiado', res.data.message);
-            setGeneratedOrders([]);
+            const res = await api.delete('/simulation/orders/cleanup'); // Llamada API para limpiar
+
+            showCustomModal({
+                type: 'info',
+                title: '🧹 Limpiado',
+                message: res.data.message, // Mensaje desplegado sobre limpieza
+                onConfirm: hideCustomModal,
+            });
+
+            setGeneratedOrders([]); // Vaciar lista local de pedidos generados
         } catch (error: any) {
-            Alert.alert('❌ Error', error.response?.data?.error || 'No se pudo limpiar los pedidos');
+            showCustomModal({
+                type: 'error',
+                title: '❌ Error',
+                message: error.response?.data?.error || 'No se pudo limpiar los pedidos',
+                onConfirm: hideCustomModal,
+            });
         } finally {
             setLoading(false);
         }
     };
 
+    // Si el usuario no es repartidor, mostrar mensaje y botón para volver atrás
     if (!isRepartidor) {
         return (
             <View style={styles.centered}>
@@ -66,9 +137,11 @@ export default function SimulationPanel() {
         );
     }
 
+    // Renderizado principal para usuario repartidor
     return (
         <View style={styles.container}>
-            {/* Header */}
+
+            {/* Header con botón volver y título */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -80,11 +153,14 @@ export default function SimulationPanel() {
                 <View style={styles.placeholder} />
             </View>
 
+            {/* Contenido desplazarle con ScrollView */}
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {/* Controles de Simulación */}
+
+                {/* Sección controles */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>🎮 Controles de Simulación</Text>
 
+                    {/* Botones para generar pedidos simulados */}
                     <View style={styles.controlsGrid}>
                         <TouchableOpacity
                             style={[styles.controlButton, styles.primaryButton]}
@@ -105,6 +181,7 @@ export default function SimulationPanel() {
                         </TouchableOpacity>
                     </View>
 
+                    {/* Botón para limpiar pedidos antiguos */}
                     <TouchableOpacity
                         style={[styles.controlButton, styles.cleanupButton]}
                         onPress={cleanupOrders}
@@ -115,7 +192,7 @@ export default function SimulationPanel() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Pedidos Generados */}
+                {/* Mostrar últimos pedidos generados si existen */}
                 {generatedOrders.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>📦 Últimos Pedidos Generados</Text>
@@ -137,7 +214,7 @@ export default function SimulationPanel() {
                     </View>
                 )}
 
-                {/* Loading */}
+                {/* Indicador de carga durante generación */}
                 {loading && (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#FFBC0D" />
@@ -145,7 +222,7 @@ export default function SimulationPanel() {
                     </View>
                 )}
 
-                {/* Información */}
+                {/* Sección informativa con detalles */}
                 <View style={styles.infoSection}>
                     <Text style={styles.infoTitle}>💡 Información</Text>
                     <Text style={styles.infoText}>
@@ -157,10 +234,24 @@ export default function SimulationPanel() {
                     </Text>
                 </View>
             </ScrollView>
+
+            {/* Modal personalizado para mostrar mensajes */}
+            <CustomModal
+                visible={customModal.visible}
+                type={customModal.type}
+                title={customModal.title}
+                message={customModal.message}
+                confirmText={customModal.confirmText}
+                showCancel={customModal.showCancel}
+                onConfirm={customModal.onConfirm}
+                onCancel={hideCustomModal}
+            />
         </View>
     );
 }
 
+
+// Estilos para los componentes UI usando StyleSheet nativo
 const styles = StyleSheet.create({
     container: {
         flex: 1,

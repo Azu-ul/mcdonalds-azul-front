@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Modal,
   Image,
 } from 'react-native';
@@ -16,6 +15,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { API_URL } from '../../config/api';
 import { useAuth } from '../context/AuthContext';
+import CustomModal from '../components/CustomModal';
 
 type Restaurant = {
   id: number;
@@ -29,13 +29,14 @@ type SavedAddress = {
   id: string;
   label: string;
   address: string;
-  latitude: number;  // Ya no es opcional
-  longitude: number; // Ya no es opcional
+  latitude: number;
+  longitude: number;
   distance: number;
 };
 
 type Tab = 'pickup' | 'delivery';
 
+// Componente principal
 export default function Restaurants() {
   const router = useRouter();
   const { user, isAuthenticated, updateUser } = useAuth();
@@ -44,36 +45,43 @@ export default function Restaurants() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deliverySearchQuery, setDeliverySearchQuery] = useState('');
 
-  // Pedí y Retirá
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
 
-  // McDelivery
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [filteredAddresses, setFilteredAddresses] = useState<SavedAddress[]>([]);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // Modales
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
   const [editAddressText, setEditAddressText] = useState('');
   const [editAddressLabel, setEditAddressLabel] = useState('');
 
-  // Modal para menú de opciones
   const [menuModalVisible, setMenuModalVisible] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<SavedAddress | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
-  // Estados nuevos para el modal de confirmación
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
+  const [modalState, setModalState] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'delete';
+    title: string;
+    message: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     loadRestaurants();
     loadSavedAddresses();
   }, [isAuthenticated]);
 
+  // Filtros de búsqueda de restaurantes
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredRestaurants(restaurants);
@@ -86,6 +94,7 @@ export default function Restaurants() {
     }
   }, [searchQuery, restaurants]);
 
+  // Filtros de búsqueda de direcciones
   useEffect(() => {
     if (deliverySearchQuery.trim() === '') {
       setFilteredAddresses(savedAddresses);
@@ -98,7 +107,7 @@ export default function Restaurants() {
     }
   }, [deliverySearchQuery, savedAddresses]);
 
-  // Agrega este useEffect para debug
+  // Imprimir estado de direcciones
   useEffect(() => {
     console.log('Estado actual de direcciones:', {
       isAuthenticated,
@@ -107,9 +116,9 @@ export default function Restaurants() {
     });
   }, [savedAddresses, isAuthenticated]);
 
-  // Función para calcular distancia entre dos coordenadas (fórmula de Haversine)
+  // Función para calcular la distancia entre el usuario y el restaurante
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Radio de la Tierra en km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -120,14 +129,13 @@ export default function Restaurants() {
     return R * c;
   };
 
-  // Actualizar loadRestaurants para calcular distancias
+  // Función para cargar los restaurantes
   const loadRestaurants = async () => {
     try {
       setLoading(true);
       const response = await api.get('/restaurants');
 
       if (response.data.success && response.data.restaurants) {
-        // Obtener ubicación del usuario si está disponible
         let userLat: number | null = null;
         let userLng: number | null = null;
 
@@ -142,7 +150,6 @@ export default function Restaurants() {
         const restaurantsData: Restaurant[] = response.data.restaurants.map((r: any) => {
           let distance = 0;
 
-          // Calcular distancia si tenemos coordenadas del usuario y del restaurante
           if (userLat && userLng && r.latitude && r.longitude) {
             distance = calculateDistance(userLat, userLng, r.latitude, r.longitude);
           }
@@ -156,7 +163,6 @@ export default function Restaurants() {
           };
         });
 
-        // Ordenar por distancia (más cercanos primero)
         restaurantsData.sort((a, b) => a.distance - b.distance);
 
         setRestaurants(restaurantsData);
@@ -167,7 +173,13 @@ export default function Restaurants() {
       }
     } catch (error) {
       console.error('Error loading restaurants:', error);
-      Alert.alert('Error', 'No se pudieron cargar los restaurantes');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudieron cargar los restaurantes',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
       setRestaurants([]);
       setFilteredRestaurants([]);
     } finally {
@@ -175,6 +187,7 @@ export default function Restaurants() {
     }
   };
 
+  // Función para cargar las direcciones
   const loadSavedAddresses = async () => {
     try {
       console.log('=== CARGANDO DIRECCIONES DESDE BD ===');
@@ -185,7 +198,6 @@ export default function Restaurants() {
         console.log('Respuesta API COMPLETA:', JSON.stringify(response.data, null, 2));
 
         if (response.data.success && response.data.addresses) {
-          // Obtener ubicación del usuario si está disponible
           let userLat: number | null = null;
           let userLng: number | null = null;
 
@@ -202,7 +214,6 @@ export default function Restaurants() {
             .map((addr: any) => {
               let distance = 0;
 
-              // Calcular distancia si tenemos coordenadas del usuario
               if (userLat && userLng && addr.latitude && addr.longitude) {
                 distance = calculateDistance(userLat, userLng, addr.latitude, addr.longitude);
               }
@@ -232,7 +243,6 @@ export default function Restaurants() {
       }
     } catch (error) {
       console.error('Error loading saved addresses from DB:', error);
-      // En caso de error, intentar cargar desde AsyncStorage como fallback
       try {
         const stored = await AsyncStorage.getItem('saved_addresses');
         if (stored) {
@@ -252,14 +262,13 @@ export default function Restaurants() {
     }
   };
 
+  // Función para guardar las direcciones en AsyncStorages
   const saveAddressesToStorage = async (addresses: SavedAddress[]) => {
     try {
-      // SOLO actualizar estado local - la base de datos es la fuente de verdad
       setSavedAddresses(addresses);
       setFilteredAddresses(addresses);
       console.log('Estado local actualizado con:', addresses.length, 'direcciones');
 
-      // Opcional: mantener AsyncStorage como cache, pero no es crítico
       await AsyncStorage.setItem('saved_addresses', JSON.stringify(addresses));
 
     } catch (error) {
@@ -267,29 +276,33 @@ export default function Restaurants() {
     }
   };
 
+  // Función para seleccionar un restaurante
   const handleSelectRestaurant = async (restaurant: Restaurant) => {
     if (!restaurant.isOpen) {
-      Alert.alert('Cerrado', 'Este restaurante está cerrado');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Cerrado',
+        message: 'Este restaurante está cerrado',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
       return;
     }
 
+    // Actualiza la información del restaurante en la base de datos
     try {
-      // Si el usuario está autenticado, actualizar el carrito con el restaurant_id
       if (isAuthenticated) {
-        // Verificar si existe un carrito
         const cartResponse = await api.get('/cart');
 
         if (cartResponse.data.success) {
           const cartId = cartResponse.data.cart.id;
 
-          // Actualizar el restaurant_id del carrito
           await api.put(`/cart/${cartId}/restaurant`, {
             restaurant_id: restaurant.id
           });
         }
       }
 
-      // Actualizar la dirección del usuario con el restaurante
       await updateUser({
         address: restaurant.name,
         selectedRestaurant: {
@@ -302,7 +315,7 @@ export default function Restaurants() {
         locationType: 'pickup'
       });
 
-      // Guardar en AsyncStorage
+      // Guarda la información del restaurante en AsyncStorage
       await AsyncStorage.setItem('selected_address', restaurant.name);
       await AsyncStorage.setItem('selected_restaurant', 'true');
       await AsyncStorage.setItem('restaurant_id', restaurant.id.toString());
@@ -315,22 +328,34 @@ export default function Restaurants() {
       router.replace('/');
     } catch (error) {
       console.error('Error selecting restaurant:', error);
-      Alert.alert('Error', 'No se pudo seleccionar el restaurante');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo seleccionar el restaurante',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
     }
   };
 
-  // Reemplaza la función handleUseCurrentLocation en restaurants.tsx
-
+  // Función para seleccionar la ubicación actual
   const handleUseCurrentLocation = async () => {
     try {
       setLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Necesitamos tu ubicación');
+        setModalState({
+          visible: true,
+          type: 'error',
+          title: 'Permiso denegado',
+          message: 'Necesitamos tu ubicación',
+          onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+        });
         return;
       }
 
+      // Obtiene la ubicación actual
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -338,10 +363,9 @@ export default function Restaurants() {
       const { latitude, longitude } = location.coords;
       setCurrentLocation({ lat: latitude, lng: longitude });
 
-      // Obtener dirección legible
       const address = await getAddressFromBackend(latitude, longitude);
 
-      // ✅ GUARDAR EN LA BASE DE DATOS
+      // Guarda la ubicación en la base de datos y en AsyncStorage si el usuario está autenticado
       if (isAuthenticated) {
         try {
           const response = await api.post('/user/addresses', {
@@ -354,20 +378,27 @@ export default function Restaurants() {
 
           console.log('Dirección guardada en BD:', response.data);
 
-          // Recargar direcciones desde la BD para sincronizar
           await loadSavedAddresses();
 
-          Alert.alert(
-            'Ubicación guardada',
-            'Tu ubicación actual fue guardada. Puedes editar el nombre tocando los tres puntos.',
-            [{ text: 'OK' }]
-          );
+          setModalState({
+            visible: true,
+            type: 'success',
+            title: 'Ubicación guardada',
+            message: 'Tu ubicación actual fue guardada. Puedes editar el nombre tocando los tres puntos.',
+            onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+          });
         } catch (error) {
           console.error('Error guardando en BD:', error);
-          Alert.alert('Error', 'No se pudo guardar la ubicación en el servidor');
+          setModalState({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: 'No se pudo guardar la ubicación en el servidor',
+            onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+          });
         }
+        // Guarda la ubicación en AsyncStorage si el usuario no está autenticado 
       } else {
-        // Usuario no autenticado - guardar localmente
         const newAddress: SavedAddress = {
           id: Date.now().toString(),
           label: 'Mi ubicación actual',
@@ -381,27 +412,19 @@ export default function Restaurants() {
       }
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert('Error', 'No se pudo obtener tu ubicación');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo obtener tu ubicación',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
     } finally {
       setLoadingLocation(false);
     }
   };
 
-  const saveAddressToBackend = async (address: SavedAddress) => {
-    try {
-      const response = await api.post('/user/addresses', {
-        address: address.address,
-        latitude: address.latitude,
-        longitude: address.longitude,
-        is_default: false // o true si es la primera
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error saving address to backend:', error);
-      throw error;
-    }
-  };
-
+  // Función para obtener la dirección a partir de las coordenadas del backend
   const getAddressFromBackend = async (lat: number, lng: number): Promise<string> => {
     try {
       const response = await fetch(
@@ -434,10 +457,10 @@ export default function Restaurants() {
     }
   };
 
+  // Función para seleccionar una dirección 
   const handleSelectAddress = async (address: SavedAddress) => {
     try {
       if (isAuthenticated) {
-        // Actualizar dirección del usuario en el backend
         await api.put('/profile/location', {
           latitude: address.latitude,
           longitude: address.longitude,
@@ -445,7 +468,6 @@ export default function Restaurants() {
         });
       }
 
-      // Actualizar contexto local - limpiar restaurante seleccionado
       await updateUser({
         address: address.address,
         latitude: address.latitude,
@@ -454,6 +476,7 @@ export default function Restaurants() {
         locationType: 'delivery'
       });
 
+      // Guarda la dirección seleccionada en AsyncStorage
       await AsyncStorage.setItem('selected_address', address.address);
       await AsyncStorage.setItem('selected_address_label', address.label);
       await AsyncStorage.setItem('selected_latitude', address.latitude.toString());
@@ -462,14 +485,20 @@ export default function Restaurants() {
 
       console.log('Dirección guardada:', address.address);
 
-      // Volver al home
       router.replace('/');
     } catch (error) {
       console.error('Error selecting address:', error);
-      Alert.alert('Error', 'No se pudo seleccionar la dirección');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo seleccionar la dirección',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
     }
   };
 
+  // Función para editar una dirección
   const handleEditAddress = (address: SavedAddress) => {
     setEditingAddress(address);
     setEditAddressText(address.address);
@@ -477,14 +506,21 @@ export default function Restaurants() {
     setEditModalVisible(true);
   };
 
+  // Función para guardar la dirección editada
   const handleSaveEditedAddress = async () => {
     if (!editingAddress || !editAddressText.trim() || !editAddressLabel.trim()) {
-      Alert.alert('Error', 'Ingresa una etiqueta y dirección válidas');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Ingresa una etiqueta y dirección válidas',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
       return;
     }
 
+    // Actualiza la dirección en la base de datos
     try {
-      // Si el usuario está autenticado, actualizar SOLO en el backend
       if (isAuthenticated) {
         console.log('Actualizando dirección en BD:', {
           id: editingAddress.id,
@@ -492,6 +528,7 @@ export default function Restaurants() {
           address: editAddressText.trim()
         });
 
+        
         await api.put(`/user/addresses/${editingAddress.id}`, {
           label: editAddressLabel.trim(),
           address: editAddressText.trim(),
@@ -501,15 +538,22 @@ export default function Restaurants() {
 
         console.log('Dirección actualizada en BD exitosamente');
 
-        // Recargar las direcciones desde la BD para asegurar consistencia
+        // Actualiza la dirección local
         await loadSavedAddresses();
 
         setEditModalVisible(false);
         setEditingAddress(null);
-        Alert.alert('Guardado', 'Dirección actualizada correctamente');
+        setModalState({
+          visible: true,
+          type: 'success',
+          title: 'Guardado',
+          message: 'Dirección actualizada correctamente',
+          onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+        });
 
+        
       } else {
-        // Usuario no autenticado - guardar localmente
+        // Actualiza la direccion local si el usuario no esta autenticado
         const updatedAddress = {
           ...editingAddress,
           address: editAddressText.trim(),
@@ -519,24 +563,69 @@ export default function Restaurants() {
         const updatedAddresses = savedAddresses.map(addr =>
           addr.id === editingAddress.id ? updatedAddress : addr
         );
-
+ 
+        
         await saveAddressesToStorage(updatedAddresses);
         setEditModalVisible(false);
         setEditingAddress(null);
-        Alert.alert('Guardado', 'Dirección actualizada (modo local)');
+        setModalState({
+          visible: true,
+          type: 'success',
+          title: 'Guardado',
+          message: 'Dirección actualizada (modo local)',
+          onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+        });
       }
 
     } catch (error) {
       console.error('Error saving edited address:', error);
-      Alert.alert('Error', 'No se pudo actualizar la dirección');
+      setModalState({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo actualizar la dirección',
+        onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+      });
     }
   };
 
+  // Función para eliminar una direccion
   const handleDeleteAddress = (addressId: string) => {
-    setAddressToDelete(addressId);
-    setDeleteModalVisible(true);
+    setModalState({
+      visible: true,
+      type: 'delete',
+      title: 'Eliminar dirección',
+      message: '¿Estás seguro de que quieres eliminar esta dirección? Esta acción no se puede deshacer.',
+      showCancel: true,
+      onConfirm: async () => {
+        try {
+          if (isAuthenticated) {
+            await api.delete(`/user/addresses/${addressId}`);
+            console.log('Dirección eliminada de BD');
+            await loadSavedAddresses();
+          } else {
+            const updatedAddresses = savedAddresses.filter(addr => addr.id !== addressId);
+            await saveAddressesToStorage(updatedAddresses);
+          }
+
+          setModalState(prev => ({ ...prev, visible: false }));
+          console.log('Dirección eliminada correctamente');
+
+        } catch (error) {
+          console.error('Error al eliminar dirección:', error);
+          setModalState({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: 'No se pudo eliminar la dirección',
+            onConfirm: () => setModalState(prev => ({ ...prev, visible: false }))
+          });
+        }
+      }
+    });
   };
 
+  // Función para obtener la URL de la imagen
   const getProfileImageUrl = () => {
     if (!user?.profile_image_url) return null;
     let url = user.profile_image_url;
@@ -547,11 +636,11 @@ export default function Restaurants() {
     return `${API_URL.replace('/api', '')}${url}`;
   };
 
+  // Función para manejar el presionar del menu
   const handleMenuPress = (address: SavedAddress, event: any) => {
-    // Para web, podemos usar las coordenadas del evento para posicionar el modal
     if (event?.nativeEvent?.pageX && event?.nativeEvent?.pageY) {
       setMenuPosition({
-        x: event.nativeEvent.pageX - 100, // Ajustar posición
+        x: event.nativeEvent.pageX - 100,
         y: event.nativeEvent.pageY + 10,
       });
     }
@@ -559,6 +648,7 @@ export default function Restaurants() {
     setMenuModalVisible(true);
   };
 
+  // Funciones para manejar las opciones del menu
   const handleEditFromMenu = () => {
     if (selectedAddress) {
       setMenuModalVisible(false);
@@ -569,45 +659,12 @@ export default function Restaurants() {
   const handleDeleteFromMenu = () => {
     if (selectedAddress) {
       setMenuModalVisible(false);
-      handleDeleteAddress(selectedAddress.id); // Esta ahora abre el modal de confirmación
+      handleDeleteAddress(selectedAddress.id);
     }
   };
 
-  // ✅ TAMBIÉN ACTUALIZA handleConfirmDelete para que elimine de la BD
-  const handleConfirmDelete = async () => {
-    if (!addressToDelete) return;
-
-    try {
-      if (isAuthenticated) {
-        // Eliminar de la base de datos
-        await api.delete(`/user/addresses/${addressToDelete}`);
-        console.log('Dirección eliminada de BD');
-
-        // Recargar desde la BD
-        await loadSavedAddresses();
-      } else {
-        // Usuario no autenticado - eliminar localmente
-        const updatedAddresses = savedAddresses.filter(addr => addr.id !== addressToDelete);
-        await saveAddressesToStorage(updatedAddresses);
-      }
-
-      setDeleteModalVisible(false);
-      setAddressToDelete(null);
-      console.log('Dirección eliminada correctamente');
-
-    } catch (error) {
-      console.error('Error al eliminar dirección:', error);
-      Alert.alert('Error', 'No se pudo eliminar la dirección');
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setDeleteModalVisible(false);
-    setAddressToDelete(null);
-  };
   return (
     <View style={styles.container}>
-      {/* Header - Igual al del Home */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <Text style={styles.logo}>Mc Donald's Azul</Text>
@@ -650,7 +707,6 @@ export default function Restaurants() {
         )}
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'pickup' && styles.tabActive]}
@@ -671,10 +727,8 @@ export default function Restaurants() {
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {activeTab === 'pickup' ? (
-          // PEDÍ Y RETIRÁ
           <View style={styles.content}>
             <View style={styles.searchContainer}>
               <TextInput
@@ -719,7 +773,6 @@ export default function Restaurants() {
             )}
           </View>
         ) : (
-          // En la sección MCDELIVERY, reemplaza esta parte:
           <View style={styles.content}>
             <View style={styles.searchContainer}>
               <TextInput
@@ -734,10 +787,10 @@ export default function Restaurants() {
             <TouchableOpacity
               style={[
                 styles.currentLocationButton,
-                !isAuthenticated && styles.currentLocationButtonDisabled // Agregar estilo deshabilitado
+                !isAuthenticated && styles.currentLocationButtonDisabled
               ]}
-              onPress={isAuthenticated ? handleUseCurrentLocation : undefined} // Solo funciona si está autenticado
-              disabled={loadingLocation || !isAuthenticated} // Deshabilitar si loading o no autenticado
+              onPress={isAuthenticated ? handleUseCurrentLocation : undefined}
+              disabled={loadingLocation || !isAuthenticated}
             >
               {loadingLocation ? (
                 <ActivityIndicator color="#292929" />
@@ -745,7 +798,7 @@ export default function Restaurants() {
                 <>
                   <Text style={[
                     styles.currentLocationText,
-                    !isAuthenticated && styles.currentLocationTextDisabled // Texto en gris si no autenticado
+                    !isAuthenticated && styles.currentLocationTextDisabled
                   ]}>
                     Usar mi ubicación actual
                     {!isAuthenticated && " (Inicia sesión para usar este botón)"}
@@ -754,7 +807,6 @@ export default function Restaurants() {
               )}
             </TouchableOpacity>
 
-            {/* MOSTRAR SOLO EL CARTEL SI NO ESTÁ AUTENTICADO */}
             {!isAuthenticated ? (
               <TouchableOpacity
                 style={styles.authPromptCard}
@@ -769,7 +821,6 @@ export default function Restaurants() {
                 </View>
               </TouchableOpacity>
             ) : (
-              /* MOSTRAR DIRECCIONES GUARDADAS SOLO SI ESTÁ AUTENTICADO */
               filteredAddresses.length > 0 && (
                 <>
                   <Text style={styles.sectionTitle}>- Direcciones guardadas -</Text>
@@ -818,7 +869,6 @@ export default function Restaurants() {
         <View style={styles.bottomSpacing} />
       </ScrollView>
 
-      {/* Modal de Edición de Dirección */}
       <Modal
         visible={editModalVisible}
         transparent
@@ -868,7 +918,6 @@ export default function Restaurants() {
         </View>
       </Modal>
 
-      {/* Modal de Menú de Opciones (para web) */}
       <Modal
         visible={menuModalVisible}
         transparent
@@ -920,38 +969,15 @@ export default function Restaurants() {
         </TouchableOpacity>
       </Modal>
 
-      <Modal
-        visible={deleteModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCancelDelete}
-      >
-        <View style={styles.deleteModalOverlay}>
-          <View style={styles.deleteModalContainer}>
-            <Text style={styles.deleteModalTitle}>Eliminar dirección</Text>
-
-            <Text style={styles.deleteModalText}>
-              ¿Estás seguro de que quieres eliminar esta dirección? Esta acción no se puede deshacer.
-            </Text>
-
-            <View style={styles.deleteModalButtons}>
-              <TouchableOpacity
-                style={styles.deleteCancelButton}
-                onPress={handleCancelDelete}
-              >
-                <Text style={styles.deleteCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.deleteConfirmButton}
-                onPress={handleConfirmDelete}
-              >
-                <Text style={styles.deleteConfirmText}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <CustomModal
+        visible={modalState.visible}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        showCancel={modalState.showCancel}
+        onConfirm={modalState.onConfirm}
+        onCancel={() => setModalState(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 }
@@ -961,7 +987,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  // Header styles igual al Home
   header: {
     backgroundColor: '#DA291C',
     paddingVertical: 16,
@@ -1182,7 +1207,7 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     padding: 16,
-    cursor: 'pointer', // Para web
+    cursor: 'pointer',
   },
   menuIcon: {
     fontSize: 24,
@@ -1191,7 +1216,6 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 40,
   },
-  // Modal de edición
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -1259,7 +1283,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
   },
-  // Modal de menú (nuevo para web)
   menuModalOverlay: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -1312,65 +1335,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
-  deleteModalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  deleteModalContainer: {
-    width: '90%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-  },
-  deleteModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#292929',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  deleteModalText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  deleteModalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  deleteCancelButton: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-  },
-  deleteCancelText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteConfirmButton: {
-    flex: 1,
-    backgroundColor: '#DA291C',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteConfirmText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   authPromptCard: {
     backgroundColor: '#FFF8E1',
     borderRadius: 12,
@@ -1419,3 +1383,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+

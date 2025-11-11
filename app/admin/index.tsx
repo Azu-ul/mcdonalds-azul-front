@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../config/api';
@@ -50,10 +50,18 @@ const AdminScreen = () => {
     // Verificar permisos de administrador después del montaje
     useEffect(() => {
         if (!isAuthenticated || !isAdmin) {
-            // Usar setTimeout para evitar la navegación durante el render inicial
             const timer = setTimeout(() => {
-                Alert.alert('Acceso denegado', 'No tienes permisos de administrador');
-                router.replace('/');
+                showModal({
+                    type: 'error',
+                    title: 'Acceso denegado',
+                    message: 'No tienes permisos de administrador',
+                    showCancel: false,
+                    confirmText: 'Aceptar',
+                    onConfirm: () => {
+                        hideModal();
+                        router.replace('/');
+                    }
+                });
             }, 100);
             return () => clearTimeout(timer);
         } else {
@@ -142,6 +150,7 @@ const AdminScreen = () => {
         });
     };
 
+    // Función para confirmar la eliminación
     const confirmDelete = async () => {
         if (!itemToDelete) return;
 

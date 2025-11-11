@@ -32,6 +32,7 @@ type Flyer = {
   link?: string;
 };
 
+// Función principal
 export default function Home() {
   const router = useRouter();
   const { user, isAuthenticated, updateUser } = useAuth();
@@ -46,11 +47,11 @@ export default function Home() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<{ name: string, address: string } | null>(null);
   const [categories, setCategories] = useState<{ id: number; name: string; icon: string }[]>([]);
 
-  // ✅ Calculamos total de items y precio desde el contexto
+  // Calculamos total de items y precio desde el contexto
   const totalItems = cart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
   const totalPrice = cart?.total || 0;
 
-  // ✅ Refrescar carrito cuando la pantalla vuelve a estar en foco
+  // Refrescar carrito cuando la pantalla vuelve a estar en foco
   useFocusEffect(
     React.useCallback(() => {
       refetchCart();
@@ -78,6 +79,7 @@ export default function Home() {
     }
   }, [categories]);
 
+  // Funcion para cargar categorias
   const loadCategories = async () => {
     try {
       const res = await api.get('/categories');
@@ -88,6 +90,7 @@ export default function Home() {
     }
   };
 
+  // Funcion para cargar productos
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -101,6 +104,7 @@ export default function Home() {
     }
   };
 
+  // Funcion para chequear el tipo de recogida
   const checkPickupType = async () => {
     try {
       const isRestaurant = await AsyncStorage.getItem('is_restaurant_pickup');
@@ -124,6 +128,7 @@ export default function Home() {
     }
   };
 
+  // Funcion para cargar la direccion
   const loadUserAddress = async () => {
     try {
       const isRestaurant = await AsyncStorage.getItem('is_restaurant_pickup');
@@ -171,6 +176,7 @@ export default function Home() {
     }
   };
 
+  // Funcion para cargar flyers
   const loadFlyers = async () => {
     try {
       const res = await api.get('/flyers');
@@ -182,14 +188,17 @@ export default function Home() {
     }
   };
 
+  // Funcion para manejar la presion de un producto
   const handleProductPress = (product: Product) => {
     router.push(`/product/${product.id}`);
   };
 
+  // Funcion para manejar la presion de una categoria
   const handleCategoryPress = (categoryName: string) => {
     setSelectedCategory(categoryName);
   };
 
+  // Funcion para obtener la URL de la imagen
   const getProfileImageUrl = () => {
     if (!user?.profile_image_url) return null;
     let url = user.profile_image_url;
@@ -200,6 +209,7 @@ export default function Home() {
     return `${API_URL.replace('/api', '')}${url}`;
   };
 
+  // Funcion para obtener la direccion
   const getDisplayAddress = (): string => {
     if (isRestaurantPickup && selectedRestaurant) {
       return `${selectedRestaurant.name} - ${selectedRestaurant.address}`;
@@ -217,6 +227,7 @@ export default function Home() {
     );
   }
 
+  // Render
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -230,13 +241,13 @@ export default function Home() {
             <View style={styles.authButtonsContainer}>
               <TouchableOpacity
                 style={styles.loginButton}
-                onPress={() => router.push('/signin')}
+                onPress={() => router.replace('/signin')}
               >
                 <Text style={styles.loginButtonText}>Ingresar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.registerButton}
-                onPress={() => router.push('/register')}
+                onPress={() => router.replace('/register')}
               >
                 <Text style={styles.registerButtonText}>Registrarse</Text>
               </TouchableOpacity>
@@ -244,7 +255,7 @@ export default function Home() {
           ) : (
             <TouchableOpacity
               style={styles.profileContainer}
-              onPress={() => router.push('/profile')}
+              onPress={() => router.replace('/profile')}
             >
               {user?.profile_image_url ? (
                 <Image
@@ -358,7 +369,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 0,
   },
- authButtonsContainer: {
+  authButtonsContainer: {
     flexDirection: 'column',
   },
   loginButton: {
@@ -368,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#fff',
-   marginBottom: 8,
+    marginBottom: 8,
   },
   loginButtonText: {
     color: '#DA291C',

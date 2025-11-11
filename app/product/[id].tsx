@@ -8,31 +8,32 @@ import {
     Image,
     ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import IngredientSelector from './IngredientSelector';
-import SideSelector from './SideSelector';
-import DrinkSelector from './DrinkSelector';
-import CondimentSelector from './CondimentSelector';
-import CustomModal from '../components/CustomModal';
-import SelectionModal from '../components/SelectionModal';
-import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
-import api, { API_URL } from '../../config/api';
-import { useCoupon } from '../context/CouponContext';
+import { useRouter, useLocalSearchParams } from 'expo-router'; // Para navegación y acceso a parámetros de URL
+import IngredientSelector from './IngredientSelector'; // Componente para seleccionar ingredientes
+import SideSelector from './SideSelector'; // Componente para seleccionar acompañamientos
+import DrinkSelector from './DrinkSelector'; // Componente para seleccionar bebidas
+import CondimentSelector from './CondimentSelector'; // Componente para seleccionar condimentos
+import CustomModal from '../components/CustomModal'; // Modal personalizado para mostrar mensajes
+import SelectionModal from '../components/SelectionModal'; // Modal para hacer selecciones de ingredientes, sides, etc.
+import { useAuth } from '../context/AuthContext'; // Contexto para autenticación y estado de usuario
+import { useCart } from '../context/CartContext'; // Contexto para carrito de compras
+import api, { API_URL } from '../../config/api'; // Comunicación con backend y URL base
+import { useCoupon } from '../context/CouponContext'; // Contexto para cupones de descuento
 
+// Tipos de datos para ingredientes, tamaños, acompañamientos, bebidas y productos
 type Ingredient = {
     id: number;
     name: string;
-    is_required: boolean;
-    is_default: boolean;
+    is_required: boolean; // Indica si el ingrediente es obligatorio
+    is_default: boolean; // Indica si viene seleccionado por defecto
     max_quantity: number;
-    extra_price: number;
+    extra_price: number; // Precio extra por unidad adicional
 };
 
 type SizeOption = {
     id: number;
     name: string;
-    price_modifier: number;
+    price_modifier: number; // Modificador de precio para este tamaño
 };
 
 type SideOption = {
@@ -56,7 +57,7 @@ type Product = {
     base_price: number;
     category: string;
     image_url?: string;
-    is_combo: boolean;
+    is_combo: boolean; // Indica si es combo (requiere selección de sides y bebidas)
     sizes: SizeOption[];
     ingredients: Ingredient[];
     sides: SideOption[];
@@ -65,7 +66,18 @@ type Product = {
 
 type ModalType = 'ingredients' | 'sides' | 'drinks' | 'condiments' | null;
 
+type CustomModalState = {
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'delete';
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+};
+
 export default function ProductDetail() {
+    // Obtener parámetros de URL para edición y selección previa
     const router = useRouter();
     const { id, edit, cartItemId, size, side, drink, customizations: customizationsParam, fromCart } = useLocalSearchParams<{
         id: string;
@@ -79,25 +91,45 @@ export default function ProductDetail() {
     }>();
     const { isAuthenticated } = useAuth();
 
+    // Estados para producto, carga y errores
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-
-    // Estados de selección
+    // Selecciones hechas por usuario: tamaño, acompañamiento, bebida, ingredientes, condimentos y cantidad
     const [selectedSize, setSelectedSize] = useState<SizeOption | null>(null);
     const [selectedSide, setSelectedSide] = useState<SideOption | null>(null);
     const [selectedDrink, setSelectedDrink] = useState<DrinkOption | null>(null);
-    const [ingredients, setIngredients] = useState<Record<number, number>>({});
-    const [condiments, setCondiments] = useState<Record<number, boolean>>({});
+    const [ingredients, setIngredients] = useState<Record<number, number>>({}); // cantidad por ingrediente
+    const [condiments, setCondiments] = useState<Record<number, boolean>>({}); // activados o no
     const [quantity, setQuantity] = useState(1);
 
-
-    // Modales
+    // Estado para mostrar menús modales según tipo de selección
     const [modalType, setModalType] = useState<ModalType>(null);
+
+    // Funciones para recargar carrito, manejar cupones, etc.
     const { refetchCart } = useCart();
     const { selectedCoupon, setSelectedCoupon, calculateDiscount } = useCoupon();
 
+    // Modal personalizado para mensajes de error, éxito, info, etc.
+    const [customModal, setCustomModal] = useState<CustomModalState>({
+        visible: false,
+        type: 'info',
+        title: '',
+        message: '',
+    });
+
+    // Mostrar modal con configuración dinámica
+    const showCustomModal = (config: Omit<CustomModalState, 'visible'>) => {
+        setCustomModal({ ...config, visible: true });
+    };
+
+    // Ocultar modal
+    const hideCustomModal = () => {
+        setCustomModal(prev => ({ ...prev, visible: false }));
+    };
+
+    // Obtiene una cadena resumen de la selección de ingredientes
     const getIngredientsPreview = () => {
         if (!product?.ingredients) return 'Personalizar';
 
@@ -108,6 +140,7 @@ export default function ProductDetail() {
         return `${selectedCount} ingredientes seleccionados`;
     };
 
+    // Cargar los datos del producto al montar el componente y al cambiar el id
     useEffect(() => {
         if (!id) {
             setError('Producto no especificado');
@@ -119,15 +152,14 @@ export default function ProductDetail() {
             try {
                 const res = await api.get(`/home/products/${id}`);
                 const productData = res.data.product;
-                console.log('Producto cargado:', productData);
                 setProduct(productData);
 
-                // Seleccionar tamaño por defecto (Mediano)
+                // Selector tamaño preseleccionado al cargar
                 if (productData.sizes && productData.sizes.length > 0) {
                     setSelectedSize(productData.sizes[0]);
                 }
 
-                // Inicializar ingredientes por defecto
+                // Ingredientes por defecto preseleccionados
                 if (productData.ingredients) {
                     const defaultIngredients: Record<number, number> = {};
                     productData.ingredients.forEach((ing: Ingredient) => {
@@ -138,26 +170,20 @@ export default function ProductDetail() {
                     setIngredients(defaultIngredients);
                 }
 
+                // Si es edición, aplicar valores precargados pasados por parámetros
                 if (edit === 'true' && productData) {
-                    // Aplicar tamaño
                     if (size && productData.sizes) {
                         const preselectedSize = productData.sizes.find((s: SizeOption) => s.name === size);
                         if (preselectedSize) setSelectedSize(preselectedSize);
                     }
-
-                    // Aplicar acompañamiento
                     if (side && productData.sides) {
                         const preselectedSide = productData.sides.find((s: SideOption) => s.name === side);
                         if (preselectedSide) setSelectedSide(preselectedSide);
                     }
-
-                    // Aplicar bebida
                     if (drink && productData.drinks) {
                         const preselectedDrink = productData.drinks.find((d: DrinkOption) => d.name === drink);
                         if (preselectedDrink) setSelectedDrink(preselectedDrink);
                     }
-
-                    // Aplicar customizaciones
                     if (customizationsParam) {
                         try {
                             const parsed = JSON.parse(customizationsParam);
@@ -179,6 +205,7 @@ export default function ProductDetail() {
         fetchProduct();
     }, [id]);
 
+    // Calcula el precio total con base en selecciones y cantidad
     const calculateTotalPrice = () => {
         if (!product) return { subtotal: 0, total: 0, discount: 0 };
 
@@ -187,11 +214,9 @@ export default function ProductDetail() {
         if (selectedSize) {
             subtotal += selectedSize.price_modifier;
         }
-
         if (selectedSide) {
             subtotal += selectedSide.extra_price;
         }
-
         if (selectedDrink) {
             subtotal += selectedDrink.extra_price;
         }
@@ -207,17 +232,16 @@ export default function ProductDetail() {
 
         subtotal = subtotal * quantity;
 
-        // Aplicar descuento de cupón si existe
         const discount = calculateDiscount(subtotal);
         const total = subtotal - discount;
 
         return { subtotal, total, discount };
     };
 
+    // Valida que el formulario tenga todas las selecciones obligatorias completas
     const isFormValid = () => {
         if (!selectedSize) return false;
 
-        // Ingredientes requeridos
         if (product?.ingredients) {
             for (const ing of product.ingredients) {
                 if (ing.is_required && (!ingredients[ing.id] || ingredients[ing.id] === 0)) {
@@ -226,7 +250,6 @@ export default function ProductDetail() {
             }
         }
 
-        // Acompañamiento y bebida solo si es combo
         if (product?.is_combo) {
             if (!selectedSide || !selectedDrink) return false;
         }
@@ -234,19 +257,35 @@ export default function ProductDetail() {
         return true;
     };
 
+    // Agrega el producto personalizado al carrito, validando usuario y campos
     const handleAddToCart = async () => {
         if (!isAuthenticated) {
-            alert('Debes iniciar sesión para agregar productos al carrito');
+            showCustomModal({
+                type: 'error',
+                title: 'Error',
+                message: 'Debes iniciar sesión para agregar productos al carrito',
+                onConfirm: hideCustomModal,
+            });
             return;
         }
 
         if (!product || !selectedSize) {
-            alert('Selecciona un tamaño');
+            showCustomModal({
+                type: 'error',
+                title: 'Error',
+                message: 'Selecciona un tamaño',
+                onConfirm: hideCustomModal,
+            });
             return;
         }
 
         if (product.is_combo && (!selectedSide || !selectedDrink)) {
-            alert('Completa todas las selecciones obligatorias del combo');
+            showCustomModal({
+                type: 'error',
+                title: 'Error',
+                message: 'Completa todas las selecciones obligatorias del combo',
+                onConfirm: hideCustomModal,
+            });
             return;
         }
 
@@ -267,19 +306,16 @@ export default function ProductDetail() {
 
             await api.post('/cart/items', payload);
 
-            // Si hay cupón seleccionado, aplicarlo
             if (selectedCoupon) {
                 try {
                     await api.post('/cart/apply-coupon', { coupon_id: selectedCoupon.id });
                 } catch (couponError) {
                     console.error('Error aplicando cupón:', couponError);
-                    // No bloqueamos el flujo si falla el cupón
                 }
             }
 
             await refetchCart();
 
-            // Si viene del carrito, volver al carrito
             if (fromCart === 'true') {
                 router.replace('/product/cart');
             } else {
@@ -288,16 +324,23 @@ export default function ProductDetail() {
         } catch (error: any) {
             console.error('Error al agregar al carrito:', error);
             const message = error.response?.data?.message || 'No se pudo agregar al carrito';
-            alert(message);
+            showCustomModal({
+                type: 'error',
+                title: 'Error',
+                message,
+                onConfirm: hideCustomModal,
+            });
         }
     };
 
+    // Función para obtener URL de imagen del producto, ajustando si es path local o url completa
     const getImageUrl = (imageUrl?: string | null) => {
         if (!imageUrl) return '';
         if (imageUrl.startsWith('http')) return imageUrl;
         return `${API_URL.replace('/api', '')}${imageUrl}`;
     };
 
+    // Mostrar loader mientras se carga el producto
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -306,6 +349,7 @@ export default function ProductDetail() {
         );
     }
 
+    // Mostrar error si falló la carga o no hay producto válido
     if (error || !product) {
         return (
             <View style={styles.errorContainer}>
@@ -317,11 +361,13 @@ export default function ProductDetail() {
         );
     }
 
+    // Calcular precios usando además el contexto de cupones
     const { subtotal, total, discount } = calculateTotalPrice();
 
+    // Renderizado principal con detalles del producto y opciones de personalización
     return (
         <View style={styles.container}>
-            {/* Header */}
+            {/* Header con botón para volver y título de categoría */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Text style={styles.backArrow}>←</Text>
@@ -337,7 +383,7 @@ export default function ProductDetail() {
                     resizeMode="contain"
                 />
 
-                {/* Nombre y precio */}
+                {/* Información básica del producto y banner de cupón si aplica */}
                 <View style={styles.infoContainer}>
                     {selectedCoupon && (
                         <View style={styles.couponBanner}>
@@ -360,7 +406,7 @@ export default function ProductDetail() {
                     <Text style={styles.productDescription}>{product.description}</Text>
                 </View>
 
-                {/* Selector de tamaño — SOLO si es combo */}
+                {/* Selección de tamaño si es combo */}
                 {product.is_combo && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Selecciona un tamaño</Text>
@@ -404,10 +450,9 @@ export default function ProductDetail() {
                     </View>
                 )}
 
-                {/* === PERSONALIZAR INGREDIENTES (siempre que haya ingredientes) === */}
+                {/* Sección personalización de ingredientes */}
                 {product.ingredients && product.ingredients.length > 0 && (
                     <View style={styles.section}>
-                        {/* Si es combo, usamos el título "Completá tu producto" */}
                         {product.is_combo ? (
                             <View style={styles.sectionHeader}>
                                 <Text style={styles.sectionTitle}>Completá tu producto</Text>
@@ -416,7 +461,6 @@ export default function ProductDetail() {
                                 </View>
                             </View>
                         ) : (
-                            /* Si no es combo, título simple */
                             <Text style={styles.sectionTitle}>Personalizar {product.name}</Text>
                         )}
 
@@ -438,7 +482,7 @@ export default function ProductDetail() {
                     </View>
                 )}
 
-                {/* === COMPLETÁ TU COMBO (acompañamiento y bebida) === */}
+                {/* Sección selección de acompañamientos y bebidas para combos */}
                 {product.is_combo && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
@@ -448,7 +492,6 @@ export default function ProductDetail() {
                             </View>
                         </View>
 
-                        {/* Acompañamiento */}
                         <TouchableOpacity
                             style={[
                                 styles.selectionCard,
@@ -470,7 +513,6 @@ export default function ProductDetail() {
                             <Text style={styles.arrow}>›</Text>
                         </TouchableOpacity>
 
-                        {/* Bebida */}
                         <TouchableOpacity
                             style={[
                                 styles.selectionCard,
@@ -494,7 +536,7 @@ export default function ProductDetail() {
                     </View>
                 )}
 
-                {/* Condimentos adicionales — solo si es combo */}
+                {/* Sección para seleccionar condimentos adicionales */}
                 {product.is_combo && (
                     <TouchableOpacity style={styles.section} onPress={() => setModalType('condiments')}>
                         <View style={styles.condimentsHeader}>
@@ -513,7 +555,7 @@ export default function ProductDetail() {
                 <View style={styles.bottomSpacing} />
             </ScrollView>
 
-            {/* Botón flotante inferior - SIEMPRE visible, con contador y estilo original */}
+            {/* Barra inferior con botón para agregar producto al carrito y control de cantidad */}
             <View style={styles.bottomBar}>
                 <TouchableOpacity
                     style={[
@@ -573,7 +615,7 @@ export default function ProductDetail() {
                 </TouchableOpacity>
             </View>
 
-            {/* Modales */}
+            {/* Modales para selección de ingredientes, acompañamientos, bebidas y condimentos */}
             <SelectionModal visible={!!modalType}>
                 {modalType === 'condiments' && (
                     <CondimentSelector
@@ -619,6 +661,18 @@ export default function ProductDetail() {
                     />
                 )}
             </SelectionModal>
+
+            {/* Modal personalizado para mensajes */}
+            <CustomModal
+                visible={customModal.visible}
+                type={customModal.type}
+                title={customModal.title}
+                message={customModal.message}
+                confirmText={customModal.confirmText}
+                showCancel={customModal.showCancel}
+                onConfirm={customModal.onConfirm}
+                onCancel={hideCustomModal}
+            />
         </View>
     );
 }
@@ -853,7 +907,6 @@ const styles = StyleSheet.create({
     bottomSpacing: {
         height: 150,
     },
-    // --- Estilos del botón inferior ---
     bottomBar: {
         position: 'absolute',
         bottom: 0,

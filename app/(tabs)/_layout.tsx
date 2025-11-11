@@ -1,14 +1,8 @@
-// /app/(tabs)/_layout.tsx
-
 import React from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { View, Text } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 
 export default function TabsLayout() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
-
   return (
     <Tabs
       screenOptions={{
@@ -71,17 +65,9 @@ export default function TabsLayout() {
               <Text style={{ fontSize: 20 }}>👤</Text>
             </View>
           ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            if (!isAuthenticated) {
-              e.preventDefault();
-              router.push('/signin');
-            }
-          },
+          href: null,
         }}
       />
-      
     </Tabs>
   );
 }
