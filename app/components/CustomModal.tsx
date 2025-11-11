@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 type CustomModalProps = {
   visible: boolean;
@@ -10,10 +11,10 @@ type CustomModalProps = {
   cancelText?: string;
   showCancel?: boolean;
   onConfirm?: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 };
 
-export default function CustomModal({
+const CustomModal = ({
   visible,
   type,
   title,
@@ -23,46 +24,61 @@ export default function CustomModal({
   showCancel = false,
   onConfirm,
   onCancel,
-}: CustomModalProps) {
-  const getColors = () => {
+}: CustomModalProps) => {
+  const getIconName = () => {
     switch (type) {
-      case 'success':
-        return { bg: '#27AE60', text: '#fff' };
-      case 'error':
-      case 'delete':
-        return { bg: '#DA291C', text: '#fff' };
-      case 'info':
-        return { bg: '#FFBC0D', text: '#292929' };
-      default:
-        return { bg: '#FFBC0D', text: '#292929' };
+      case 'success': return 'checkmark-circle';
+      case 'error': return 'close-circle';
+      case 'delete': return 'trash';
+      case 'info': return 'information-circle';
+      default: return 'information-circle';
     }
   };
 
-  const colors = getColors();
-  const isConfirmDisabled = !onConfirm;
+  const getIconColor = () => {
+    switch (type) {
+      case 'success': return '#27AE60';
+      case 'error': return '#E74C3C';
+      case 'delete': return '#E74C3C';
+      case 'info': return '#3498DB';
+      default: return '#3498DB';
+    }
+  };
+
+  const handleConfirm = () => {
+    if (onConfirm) {
+      onConfirm();
+    }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    }
+  };
 
   return (
     <Modal
-      visible={visible}
       transparent
+      visible={visible}
       animationType="fade"
-      onRequestClose={onCancel}
+      onRequestClose={handleCancel}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
-          <View style={[styles.header, { backgroundColor: colors.bg }]}>
-            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          <View style={styles.iconContainer}>
+            <Ionicons name={getIconName()} size={56} color={getIconColor()} />
           </View>
 
-          <View style={styles.body}>
-            <Text style={styles.message}>{message}</Text>
-          </View>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.message}>{message}</Text>
 
-          <View style={styles.footer}>
+          <View style={styles.buttonContainer}>
             {showCancel && (
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
-                onPress={onCancel}
+                onPress={handleCancel}
+                activeOpacity={0.7}
               >
                 <Text style={styles.cancelButtonText}>{cancelText}</Text>
               </TouchableOpacity>
@@ -72,22 +88,20 @@ export default function CustomModal({
               style={[
                 styles.button,
                 styles.confirmButton,
-                { backgroundColor: colors.bg },
-                isConfirmDisabled && styles.disabledButton,
+                type === 'delete' && styles.deleteButton,
+                !showCancel && styles.fullWidthButton
               ]}
-              onPress={onConfirm}
-              disabled={isConfirmDisabled}
+              onPress={handleConfirm}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.confirmButtonText, { color: colors.text }]}>
-                {confirmText}
-              </Text>
+              <Text style={styles.confirmButtonText}>{confirmText}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </Modal>
   );
-}
+};
 
 const styles = StyleSheet.create({
   overlay: {
@@ -98,52 +112,39 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
     width: '100%',
     maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.15)',
-      },
-    }),
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  header: {
-    padding: 20,
-    paddingBottom: 16,
+  iconContainer: {
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: 'bold',
+    color: '#2D3436',
+    marginBottom: 12,
     textAlign: 'center',
-  },
-  body: {
-    padding: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
   },
   message: {
     fontSize: 16,
-    color: '#333',
+    color: '#636E72',
     textAlign: 'center',
-    lineHeight: 24,
+    marginBottom: 24,
+    lineHeight: 22,
   },
-  footer: {
+  buttonContainer: {
     flexDirection: 'row',
-    padding: 16,
+    width: '100%',
     gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
   },
   button: {
     flex: 1,
@@ -152,24 +153,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fullWidthButton: {
+    flex: 1,
+  },
   cancelButton: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#DFE6E9',
   },
   cancelButtonText: {
-    color: '#666',
     fontSize: 16,
     fontWeight: '600',
+    color: '#636E72',
   },
   confirmButton: {
-    // backgroundColor se establece dinámicamente
+    backgroundColor: '#27AE60',
+  },
+  deleteButton: {
+    backgroundColor: '#E74C3C',
   },
   confirmButtonText: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.5,
+    color: '#FFFFFF',
   },
 });
+
+export default CustomModal;

@@ -146,7 +146,7 @@ const AdminScreen = () => {
             confirmText: 'Eliminar',
             cancelText: 'Cancelar',
             showCancel: true,
-            onConfirm: confirmDelete
+            onConfirm: () => confirmDelete() // ✅ Sin parámetros
         });
     };
 
@@ -155,34 +155,44 @@ const AdminScreen = () => {
         if (!itemToDelete) return;
 
         const itemName = getItemDisplayName(itemToDelete);
-        hideModal(); // ✅ Cerrar el modal ANTES de eliminar
+
+        // ✅ Cerrar modal inmediatamente
+        setModal(prev => ({ ...prev, visible: false }));
 
         try {
             await api.delete(`/admin/${activeTab}/${itemToDelete.id}`);
 
-            showModal({
-                type: 'success',
-                title: 'Éxito',
-                message: `${itemName} eliminado correctamente`,
-                showCancel: false,
-                confirmText: 'Aceptar',
-                onConfirm: () => {
-                    hideModal();
-                    fetchData(); // Recargar datos
-                }
-            });
+            // Esperar un momento antes de mostrar el modal de éxito
+            setTimeout(() => {
+                showModal({
+                    type: 'success',
+                    title: 'Éxito',
+                    message: `${itemName} eliminado correctamente`,
+                    showCancel: false,
+                    confirmText: 'Aceptar',
+                    onConfirm: () => {
+                        hideModal();
+                        fetchData();
+                    }
+                });
+            }, 100);
+
         } catch (err: any) {
             console.error('Delete error:', err);
             const errorMessage = err.response?.data?.error || 'No se pudo eliminar';
 
-            showModal({
-                type: 'error',
-                title: 'Error',
-                message: errorMessage,
-                showCancel: false,
-                confirmText: 'Aceptar',
-                onConfirm: () => hideModal()
-            });
+            setTimeout(() => {
+                showModal({
+                    type: 'error',
+                    title: 'Error',
+                    message: errorMessage,
+                    showCancel: false,
+                    confirmText: 'Aceptar',
+                    onConfirm: () => hideModal()
+                });
+            }, 100);
+        } finally {
+            setItemToDelete(null);
         }
     };
 

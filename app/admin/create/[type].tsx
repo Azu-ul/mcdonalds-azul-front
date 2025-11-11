@@ -27,7 +27,7 @@ const CreateScreen = () => {
   const [dateField, setDateField] = useState<'start_date' | 'end_date'>('start_date');
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<number[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
   const [modalState, setModalState] = useState<{
@@ -44,17 +44,11 @@ const CreateScreen = () => {
     message: '',
   });
 
-  // Cargar categorías al montar el componente
-  useEffect(() => {
-    if (type === 'productos') {
-      fetchCategories();
-    }
-  }, [type]);
-
-  // Cargar ingredientes si el tipo es productos
+  // Cargar ingredientes y categorías si el tipo es productos
   useEffect(() => {
     if (type === 'productos') {
       fetchIngredients();
+      fetchCategories();
     }
   }, [type]);
 
@@ -68,14 +62,11 @@ const CreateScreen = () => {
   };
 
   const fetchCategories = async () => {
-    setLoadingCategories(true);
     try {
-      const res = await api.get('/categories');
+      const res = await api.get('/admin/categorias');
       setCategories(res.data.categories || []);
     } catch (err) {
       console.error('Error al cargar categorías:', err);
-    } finally {
-      setLoadingCategories(false);
     }
   };
 
@@ -232,7 +223,6 @@ const CreateScreen = () => {
         keyboardType="numeric"
       />
 
-      {/* ✅ AGREGAR URL DE IMAGEN */}
       <Text style={styles.label}>URL de la imagen</Text>
       <TextInput
         style={styles.input}
@@ -243,16 +233,29 @@ const CreateScreen = () => {
         autoCapitalize="none"
       />
 
-      <Text style={styles.label}>ID de Categoría *</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.category_id ? formData.category_id.toString() : ''}
-        onChangeText={(text) => setProperty('category_id', parseInt(text) || 0)}
-        placeholder="1"
-        keyboardType="numeric"
-      />
+      {/* ✅ PICKER DE CATEGORÍAS */}
+      <Text style={styles.label}>Categoría *</Text>
+      <View style={styles.categoryContainer}>
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.categoryChip,
+              formData.category_id === category.id && styles.categoryChipSelected
+            ]}
+            onPress={() => setProperty('category_id', category.id)}
+          >
+            <Text style={[
+              styles.categoryChipText,
+              formData.category_id === category.id && styles.categoryChipTextSelected
+            ]}>
+              {category.icon} {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      {/* ✅ SELECTOR DE INGREDIENTES */}
+      {/* Selector de ingredientes */}
       <Text style={styles.label}>Ingredientes</Text>
       <View style={styles.ingredientsContainer}>
         {ingredients.map((ingredient) => (
@@ -263,16 +266,12 @@ const CreateScreen = () => {
               selectedIngredients.includes(ingredient.id) && styles.ingredientChipSelected
             ]}
             onPress={() => {
-              setSelectedIngredients(prev =>
-                prev.includes(ingredient.id)
-                  ? prev.filter(id => id !== ingredient.id)
-                  : [...prev, ingredient.id]
-              );
-              setProperty('ingredients',
-                selectedIngredients.includes(ingredient.id)
-                  ? selectedIngredients.filter(id => id !== ingredient.id)
-                  : [...selectedIngredients, ingredient.id]
-              );
+              const newSelected = selectedIngredients.includes(ingredient.id)
+                ? selectedIngredients.filter(id => id !== ingredient.id)
+                : [...selectedIngredients, ingredient.id];
+
+              setSelectedIngredients(newSelected);
+              setProperty('ingredients', newSelected);
             }}
           >
             <Text style={[
@@ -832,6 +831,32 @@ const styles = StyleSheet.create({
   },
   ingredientChipTextSelected: {
     color: '#FFFFFF',
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  categoryChipSelected: {
+    backgroundColor: '#FFBC0D',
+    borderColor: '#DA291C',
+  },
+  categoryChipText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '600',
+  },
+  categoryChipTextSelected: {
+    color: '#DA291C',
   },
 });
 
