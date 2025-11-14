@@ -182,7 +182,7 @@ export default function DeliveryHome() {
       setActionLoading(true);
       setAvailableOrders((prev) => prev.filter((o) => o.id !== orderId)); // Remover pedido de disponibles
       setModalVisible(false); // Cerrar modal
-      await api.post("delivery/orders/accept", { orderid: orderId });
+      await api.post("delivery/orders/accept", { order_id: orderId });
       showCustomModal({
         type: "success",
         title: "Éxito",
@@ -207,7 +207,7 @@ export default function DeliveryHome() {
   const handlePickupOrder = async (orderId: number) => {
     try {
       setActionLoading(true);
-      await api.post("delivery/orders/pickup", { orderid: orderId });
+      await api.post("delivery/orders/pickup", { order_id: orderId });
       showCustomModal({
         type: "success",
         title: "Éxito",
@@ -231,7 +231,7 @@ export default function DeliveryHome() {
   const handleDeliverOrder = async (orderId: number) => {
     try {
       setActionLoading(true);
-      await api.post("delivery/orders/deliver", { orderid: orderId });
+      await api.post("delivery/orders/deliver", { order_id: orderId });
       showCustomModal({
         type: "success",
         title: "Entregado!",
@@ -259,7 +259,7 @@ export default function DeliveryHome() {
       setAvailableOrders((prev) => prev.filter((order) => order.id !== orderId)); // Eliminar pedido rechazado
       setModalVisible(false);
       setSelectedOrder(null);
-      await api.post("delivery/orders/reject", { orderid: orderId });
+      await api.post("delivery/orders/reject", { order_id: orderId });
       showCustomModal({
         type: "info",
         title: "Rechazado",
