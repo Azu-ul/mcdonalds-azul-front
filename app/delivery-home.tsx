@@ -11,7 +11,7 @@ import {
   Modal,
 } from "react-native";
 import { useRouter } from "expo-router"; // Para navegación entre pantallas
-import {useAuth} from "./context/AuthContext"; // Contexto para autenticación
+import { useAuth } from "./context/AuthContext"; // Contexto para autenticación
 import api from "../config/api"; // API para conexión con backend
 import { Ionicons } from "@expo/vector-icons"; // Iconos vectoriales
 import CustomModal from "./components/CustomModal"; // Modal personalizado
@@ -253,13 +253,18 @@ export default function DeliveryHome() {
   };
 
   // Función para rechazar un pedido disponible
+  // Función para rechazar un pedido disponible
   const handleRejectOrder = async (orderId: number) => {
     try {
       setActionLoading(true);
-      setAvailableOrders((prev) => prev.filter((order) => order.id !== orderId)); // Eliminar pedido rechazado
+      // ✅ Llamar a la API PRIMERO
+      await api.post("delivery/orders/reject", { order_id: orderId });
+
+      // ✅ Si la API tiene éxito, actualizar estado local y UI
+      setAvailableOrders((prev) => prev.filter((order) => order.id !== orderId));
       setModalVisible(false);
       setSelectedOrder(null);
-      await api.post("delivery/orders/reject", { order_id: orderId });
+
       showCustomModal({
         type: "info",
         title: "Rechazado",
@@ -267,13 +272,15 @@ export default function DeliveryHome() {
         onConfirm: hideCustomModal,
       });
     } catch (error: any) {
+      console.error("Error al rechazar pedido:", error);
       showCustomModal({
         type: "error",
         title: "Error",
-        message: "No se pudo rechazar el pedido",
+        message: error.response?.data?.error || "No se pudo rechazar el pedido",
         onConfirm: hideCustomModal,
       });
-      await loadAvailableOrders(); // Recargar pedidos disponibles
+      // Opcional: recargar la lista para asegurar consistencia si la API falló
+      // await loadAvailableOrders(); // Descomenta si lo prefieres
     } finally {
       setActionLoading(false);
     }
