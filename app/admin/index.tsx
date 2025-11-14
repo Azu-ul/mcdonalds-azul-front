@@ -145,19 +145,18 @@ const AdminScreen = () => {
             confirmText: 'Eliminar',
             cancelText: 'Cancelar',
             showCancel: true,
-            onConfirm: () => confirmDelete() // ✅ Sin parámetros
+            onConfirm: () => confirmDelete(item) // ✅ Pasa el item directamente
         });
     };
 
     // Función para confirmar la eliminación
-    // Función para confirmar la eliminación
-    const confirmDelete = async () => {
+    const confirmDelete = async (itemToDelete: Item) => { // ✅ Recibe el item como parámetro
         if (!itemToDelete) return;
 
         const itemName = getItemDisplayName(itemToDelete);
 
-        // ✅ Cerrar el modal de confirmación inmediatamente
-        setModal(prev => ({ ...prev, visible: false }));
+        // ❌ REMOVIDO: setModal(prev => ({ ...prev, visible: false })); 
+        // No es necesario si el modal se cierra correctamente desde onConfirm
 
         try {
             await api.delete(`/admin/${activeTab}/${itemToDelete.id}`);
@@ -165,7 +164,7 @@ const AdminScreen = () => {
             // ✅ Recargar los datos *antes* de mostrar el modal de éxito
             await fetchData();
 
-            // ✅ Mostrar modal de éxito sin setTimeout
+            // ✅ Mostrar modal de éxito
             setModal({
                 visible: true,
                 type: 'success',
@@ -182,7 +181,7 @@ const AdminScreen = () => {
             console.error('Delete error:', err);
             const errorMessage = err.response?.data?.error || 'No se pudo eliminar';
 
-            // ✅ Mostrar modal de error sin setTimeout
+            // ✅ Mostrar modal de error
             setModal({
                 visible: true,
                 type: 'error',
@@ -193,7 +192,7 @@ const AdminScreen = () => {
                 onConfirm: () => hideModal()
             });
         } finally {
-            setItemToDelete(null);
+            setItemToDelete(null); // Limpiar el item a eliminar
         }
     };
 
