@@ -123,7 +123,6 @@ const AdminScreen = () => {
 
     const hideModal = () => {
         setModal(prev => ({ ...prev, visible: false }));
-        setItemToDelete(null);
     };
 
     // --- Acciones ---
