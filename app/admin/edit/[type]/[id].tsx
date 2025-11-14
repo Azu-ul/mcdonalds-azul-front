@@ -35,16 +35,12 @@ type Restaurant = {
   is_open?: boolean;
   opening_time?: string;
   closing_time?: string;
-  latitude?: number;
-  longitude?: number;
 };
 
 type Coupon = {
   id: number;
   title?: string;
-  code?: string;
   description?: string;
-  discount_type?: 'percentage' | 'fixed';
   discount_value?: number;
   min_purchase?: number;
   max_discount?: number;
@@ -133,7 +129,7 @@ const EditScreen = () => {
   const fetchItem = async () => {
     try {
       let endpoint = '';
-      
+
       switch (type) {
         case 'usuarios':
         case 'repartidores':
@@ -179,7 +175,7 @@ const EditScreen = () => {
     setSaving(true);
     try {
       let endpoint = '';
-      
+
       switch (type) {
         case 'usuarios':
         case 'repartidores':
@@ -225,25 +221,25 @@ const EditScreen = () => {
     }
   };
 
-// Función para obtener el valor de una propiedad
+  // Función para obtener el valor de una propiedad
   const getProperty = (key: string): any => {
     return (formData as any)[key];
   };
 
- // Función para manejar cambios en una propiedad 
+  // Función para manejar cambios en una propiedad 
   const setProperty = (key: string, value: any) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
   // Función para manejar cambios en las fechas
-  const DateInput = ({ 
-    label, 
-    value, 
-    onChange 
-  }: { 
-    label: string; 
-    value: string; 
-    onChange: (value: string) => void; 
+  const DateInput = ({
+    label,
+    value,
+    onChange
+  }: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
   }) => {
     if (Platform.OS === 'web') {
       return (
@@ -289,7 +285,7 @@ const EditScreen = () => {
         onChangeText={(text) => setProperty('full_name', text)}
         placeholder="Nombre completo"
       />
-      
+
       <Text style={styles.label}>Email</Text>
       <TextInput
         style={styles.input}
@@ -299,7 +295,7 @@ const EditScreen = () => {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      
+
       <Text style={styles.label}>Teléfono</Text>
       <TextInput
         style={styles.input}
@@ -321,7 +317,7 @@ const EditScreen = () => {
         onChangeText={(text) => setProperty('name', text)}
         placeholder="Nombre del producto"
       />
-      
+
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -331,7 +327,7 @@ const EditScreen = () => {
         multiline
         numberOfLines={3}
       />
-      
+
       <Text style={styles.label}>Precio</Text>
       <TextInput
         style={styles.input}
@@ -375,7 +371,7 @@ const EditScreen = () => {
           </Picker>
         </View>
       )}
-      
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Disponible</Text>
         <Switch
@@ -392,76 +388,52 @@ const EditScreen = () => {
       <Text style={styles.label}>Nombre del restaurante</Text>
       <TextInput
         style={styles.input}
-        value={getProperty('name') as string || ''}
+        value={getProperty('name') || ''}
         onChangeText={(text) => setProperty('name', text)}
         placeholder="Nombre del restaurante"
       />
-      
+
       <Text style={styles.label}>Dirección</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
-        value={getProperty('address') as string || ''}
+        value={getProperty('address') || ''}
         onChangeText={(text) => setProperty('address', text)}
         placeholder="Dirección completa"
         multiline
         numberOfLines={2}
       />
-      
+
       <Text style={styles.label}>Teléfono</Text>
       <TextInput
         style={styles.input}
-        value={getProperty('phone') as string || ''}
+        value={getProperty('phone') || ''}
         onChangeText={(text) => setProperty('phone', text)}
         placeholder="Teléfono"
         keyboardType="phone-pad"
       />
-      
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Latitud</Text>
-          <TextInput
-            style={styles.input}
-            value={getProperty('latitude') ? (getProperty('latitude') as number).toString() : ''}
-            onChangeText={(text) => setProperty('latitude', parseFloat(text) || 0)}
-            placeholder="Latitud"
-            keyboardType="numeric"
-          />
-        </View>
-        
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Longitud</Text>
-          <TextInput
-            style={styles.input}
-            value={getProperty('longitude') ? (getProperty('longitude') as number).toString() : ''}
-            onChangeText={(text) => setProperty('longitude', parseFloat(text) || 0)}
-            placeholder="Longitud"
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-      
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <Text style={styles.label}>Hora de apertura</Text>
           <TextInput
             style={styles.input}
-            value={getProperty('opening_time') as string || ''}
+            value={getProperty('opening_time') || ''}
             onChangeText={(text) => setProperty('opening_time', text)}
             placeholder="08:00"
           />
         </View>
-        
+
         <View style={styles.halfInput}>
           <Text style={styles.label}>Hora de cierre</Text>
           <TextInput
             style={styles.input}
-            value={getProperty('closing_time') as string || ''}
+            value={getProperty('closing_time') || ''}
             onChangeText={(text) => setProperty('closing_time', text)}
             placeholder="23:00"
           />
         </View>
       </View>
-      
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Abierto</Text>
         <Switch
@@ -472,7 +444,7 @@ const EditScreen = () => {
     </View>
   );
 
-  // Función para renderizar el formulario de cupones
+  // Función para renderizar el formulario de cupones (EDITAR)
   const renderCouponForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Título del cupón</Text>
@@ -482,7 +454,7 @@ const EditScreen = () => {
         onChangeText={(text) => setProperty('title', text)}
         placeholder="Título del cupón"
       />
-      
+
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
@@ -502,45 +474,20 @@ const EditScreen = () => {
         keyboardType="url"
         autoCapitalize="none"
       />
-      
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Tipo de descuento</Text>
-          <View style={styles.radioContainer}>
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => setProperty('discount_type', 'percentage')}
-            >
-              <View style={[styles.radioCircle, getProperty('discount_type') === 'percentage' && styles.radioSelected]}>
-                {getProperty('discount_type') === 'percentage' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>Porcentaje</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => setProperty('discount_type', 'fixed')}
-            >
-              <View style={[styles.radioCircle, getProperty('discount_type') === 'fixed' && styles.radioSelected]}>
-                {getProperty('discount_type') === 'fixed' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>Monto fijo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Valor de descuento</Text>
-          <TextInput
-            style={styles.input}
-            value={getProperty('discount_value') ? (getProperty('discount_value') as number).toString() : ''}
-            onChangeText={(text) => setProperty('discount_value', parseFloat(text) || 0)}
-            placeholder={getProperty('discount_type') === 'percentage' ? '15' : '1000'}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-      
+
+      <Text style={styles.label}>Descuento (%)</Text>
+      <TextInput
+        style={styles.input}
+        value={
+          getProperty('discount_value')
+            ? String(getProperty('discount_value'))
+            : ''
+        }
+        onChangeText={(text) => setProperty('discount_value', parseFloat(text) || 0)}
+        placeholder="15"
+        keyboardType="numeric"
+      />
+
       <View style={styles.row}>
         <View style={styles.halfInput}>
           <DateInput
@@ -549,7 +496,7 @@ const EditScreen = () => {
             onChange={(value) => setProperty('start_date', formatInputToISO(value))}
           />
         </View>
-        
+
         <View style={styles.halfInput}>
           <DateInput
             label="Fecha de fin"
@@ -558,7 +505,7 @@ const EditScreen = () => {
           />
         </View>
       </View>
-      
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Activo</Text>
         <Switch
@@ -569,87 +516,125 @@ const EditScreen = () => {
     </View>
   );
 
+
   // Función para renderizar el formulario de flyers
   const renderFlyerForm = () => (
     <View style={styles.formSection}>
       <Text style={styles.label}>Título del flyer</Text>
       <TextInput
         style={styles.input}
-        value={getProperty('title') as string || ''}
-        onChangeText={(text) => setProperty('title', text)}
+        value={getProperty('title') || ''}
+        onChangeText={(t) => setProperty('title', t)}
         placeholder="Título del flyer"
       />
-      
+
       <Text style={styles.label}>Descripción</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
-        value={getProperty('description') as string || ''}
-        onChangeText={(text) => setProperty('description', text)}
+        value={getProperty('description') || ''}
+        onChangeText={(t) => setProperty('description', t)}
         placeholder="Descripción del flyer"
         multiline
         numberOfLines={3}
       />
-      
+
       <Text style={styles.label}>URL de la imagen</Text>
       <TextInput
         style={styles.input}
-        value={getProperty('image_url') as string || ''}
-        onChangeText={(text) => setProperty('image_url', text)}
+        value={getProperty('image_url') || ''}
+        onChangeText={(t) => setProperty('image_url', t)}
         placeholder="https://ejemplo.com/imagen.jpg"
         keyboardType="url"
         autoCapitalize="none"
       />
-      
+
       <Text style={styles.label}>URL del enlace</Text>
       <TextInput
         style={styles.input}
-        value={getProperty('link_url') as string || ''}
-        onChangeText={(text) => setProperty('link_url', text)}
+        value={getProperty('link_url') || ''}
+        onChangeText={(t) => setProperty('link_url', t)}
         placeholder="https://ejemplo.com"
         keyboardType="url"
         autoCapitalize="none"
       />
-      
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Orden de visualización</Text>
-          <TextInput
-            style={styles.input}
-            value={getProperty('display_order') ? (getProperty('display_order') as number).toString() : ''}
-            onChangeText={(text) => setProperty('display_order', parseInt(text) || 0)}
-            placeholder="1"
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-      
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <DateInput
-            label="Fecha de inicio"
-            value={formatDateForInput(getProperty('start_date') as string)}
-            onChange={(value) => setProperty('start_date', formatInputToISO(value))}
-          />
-        </View>
-        
-        <View style={styles.halfInput}>
-          <DateInput
-            label="Fecha de fin"
-            value={formatDateForInput(getProperty('end_date') as string)}
-            onChange={(value) => setProperty('end_date', formatInputToISO(value))}
-          />
-        </View>
-      </View>
-      
+
+      <Text style={styles.label}>Orden de visualización</Text>
+      <TextInput
+        style={styles.input}
+        value={getProperty('display_order') ? String(getProperty('display_order')) : ''}
+        onChangeText={(t) => setProperty('display_order', parseInt(t) || 0)}
+        placeholder="1"
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>Fecha de inicio</Text>
+      {Platform.OS === 'web' ? (
+        <input
+          type="date"
+          value={getProperty('start_date') ? getProperty('start_date').split('T')[0] : ''}
+          onChange={(e) =>
+            setProperty('start_date', new Date(e.target.value + 'T00:00:00').toISOString())
+          }
+          style={{
+            width: '100%',
+            padding: 12,
+            border: '1px solid #E0E0E0',
+            borderRadius: 8,
+            fontSize: 16,
+            backgroundColor: '#FFFFFF',
+            marginBottom: 16,
+          }}
+        />
+      ) : (
+        <TextInput
+          style={styles.input}
+          value={getProperty('start_date') ? getProperty('start_date').split('T')[0] : ''}
+          onChangeText={(t) =>
+            setProperty('start_date', new Date(t + 'T00:00:00').toISOString())
+          }
+          placeholder="YYYY-MM-DD"
+        />
+      )}
+
+      <Text style={styles.label}>Fecha de fin</Text>
+      {Platform.OS === 'web' ? (
+        <input
+          type="date"
+          value={getProperty('end_date') ? getProperty('end_date').split('T')[0] : ''}
+          onChange={(e) =>
+            setProperty('end_date', new Date(e.target.value + 'T00:00:00').toISOString())
+          }
+          style={{
+            width: '100%',
+            padding: 12,
+            border: '1px solid #E0E0E0',
+            borderRadius: 8,
+            fontSize: 16,
+            backgroundColor: '#FFFFFF',
+            marginBottom: 16,
+          }}
+        />
+      ) : (
+        <TextInput
+          style={styles.input}
+          value={getProperty('end_date') ? getProperty('end_date').split('T')[0] : ''}
+          onChangeText={(t) =>
+            setProperty('end_date', new Date(t + 'T00:00:00').toISOString())
+          }
+          placeholder="YYYY-MM-DD"
+        />
+      )}
+
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Activo</Text>
         <Switch
           value={!!getProperty('is_active')}
-          onValueChange={(value) => setProperty('is_active', value)}
+          onValueChange={(v) => setProperty('is_active', v)}
         />
       </View>
     </View>
   );
+
 
   // Función para renderizar el formulario general
   const renderForm = () => {

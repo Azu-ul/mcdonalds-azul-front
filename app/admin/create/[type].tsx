@@ -4,9 +4,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import api from '../../../config/api';
 import CustomModal from '../../components/CustomModal';
+import { Platform } from 'react-native';
 
 type FormData = {
   [key: string]: any;
@@ -326,30 +326,6 @@ const CreateScreen = () => {
 
       <View style={styles.row}>
         <View style={styles.halfInput}>
-          <Text style={styles.label}>Latitud *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.latitude ? formData.latitude.toString() : ''}
-            onChangeText={(text) => setProperty('latitude', parseFloat(text) || 0)}
-            placeholder="-34.603722"
-            keyboardType="numeric"
-          />
-        </View>
-
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Longitud *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.longitude ? formData.longitude.toString() : ''}
-            onChangeText={(text) => setProperty('longitude', parseFloat(text) || 0)}
-            placeholder="-58.381592"
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
-
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
           <Text style={styles.label}>Hora de apertura</Text>
           <TextInput
             style={styles.input}
@@ -411,43 +387,14 @@ const CreateScreen = () => {
         autoCapitalize="none"
       />
 
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Tipo de descuento *</Text>
-          <View style={styles.radioContainer}>
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => setProperty('discount_type', 'percentage')}
-            >
-              <View style={[styles.radioCircle, formData.discount_type === 'percentage' && styles.radioSelected]}>
-                {formData.discount_type === 'percentage' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>Porcentaje</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.radioButton}
-              onPress={() => setProperty('discount_type', 'fixed')}
-            >
-              <View style={[styles.radioCircle, formData.discount_type === 'fixed' && styles.radioSelected]}>
-                {formData.discount_type === 'fixed' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>Monto fijo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Valor de descuento *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.discount_value ? formData.discount_value.toString() : ''}
-            onChangeText={(text) => setProperty('discount_value', parseFloat(text) || 0)}
-            placeholder={formData.discount_type === 'percentage' ? '15' : '1000'}
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
+      <Text style={styles.label}>Descuento (%) *</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.discount_value ? formData.discount_value.toString() : ''}
+        onChangeText={(text) => setProperty('discount_value', parseFloat(text) || 0)}
+        placeholder="15"
+        keyboardType="numeric"
+      />
 
       <View style={styles.row}>
         <View style={styles.halfInput}>
@@ -485,6 +432,7 @@ const CreateScreen = () => {
     </View>
   );
 
+
   // Función para renderizar el formulario de flyers
   const renderFlyerForm = () => (
     <View style={styles.formSection}>
@@ -492,7 +440,7 @@ const CreateScreen = () => {
       <TextInput
         style={styles.input}
         value={formData.title || ''}
-        onChangeText={(text) => setProperty('title', text)}
+        onChangeText={(t) => setProperty('title', t)}
         placeholder="Título del flyer"
       />
 
@@ -500,7 +448,7 @@ const CreateScreen = () => {
       <TextInput
         style={[styles.input, styles.textArea]}
         value={formData.description || ''}
-        onChangeText={(text) => setProperty('description', text)}
+        onChangeText={(t) => setProperty('description', t)}
         placeholder="Descripción del flyer"
         multiline
         numberOfLines={3}
@@ -510,7 +458,7 @@ const CreateScreen = () => {
       <TextInput
         style={styles.input}
         value={formData.image_url || ''}
-        onChangeText={(text) => setProperty('image_url', text)}
+        onChangeText={(t) => setProperty('image_url', t)}
         placeholder="https://ejemplo.com/imagen.jpg"
         keyboardType="url"
         autoCapitalize="none"
@@ -520,60 +468,89 @@ const CreateScreen = () => {
       <TextInput
         style={styles.input}
         value={formData.link_url || ''}
-        onChangeText={(text) => setProperty('link_url', text)}
+        onChangeText={(t) => setProperty('link_url', t)}
         placeholder="https://ejemplo.com"
         keyboardType="url"
         autoCapitalize="none"
       />
 
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Orden de visualización</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.display_order ? formData.display_order.toString() : ''}
-            onChangeText={(text) => setProperty('display_order', parseInt(text) || 0)}
-            placeholder="1"
-            keyboardType="numeric"
-          />
-        </View>
-      </View>
+      <Text style={styles.label}>Orden de visualización</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.display_order ? String(formData.display_order) : ''}
+        onChangeText={(t) => setProperty('display_order', parseInt(t) || 0)}
+        placeholder="1"
+        keyboardType="numeric"
+      />
 
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Fecha de inicio</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => showDatePickerModal('start_date')}
-          >
-            <Text style={styles.dateButtonText}>
-              {formatDate(formData.start_date)}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={styles.label}>Fecha de inicio</Text>
+      {Platform.OS === 'web' ? (
+        <input
+          type="date"
+          value={formData.start_date ? formData.start_date.split('T')[0] : ''}
+          onChange={(e) =>
+            setProperty('start_date', new Date(e.target.value + 'T00:00:00').toISOString())
+          }
+          style={{
+            width: '100%',
+            padding: 12,
+            border: '1px solid #E0E0E0',
+            borderRadius: 8,
+            fontSize: 16,
+            backgroundColor: '#FFFFFF',
+            marginBottom: 16,
+          }}
+        />
+      ) : (
+        <TextInput
+          style={styles.input}
+          value={formData.start_date ? formData.start_date.split('T')[0] : ''}
+          onChangeText={(t) =>
+            setProperty('start_date', new Date(t + 'T00:00:00').toISOString())
+          }
+          placeholder="YYYY-MM-DD"
+        />
+      )}
 
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Fecha de fin</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => showDatePickerModal('end_date')}
-          >
-            <Text style={styles.dateButtonText}>
-              {formatDate(formData.end_date)}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Text style={styles.label}>Fecha de fin</Text>
+      {Platform.OS === 'web' ? (
+        <input
+          type="date"
+          value={formData.end_date ? formData.end_date.split('T')[0] : ''}
+          onChange={(e) =>
+            setProperty('end_date', new Date(e.target.value + 'T00:00:00').toISOString())
+          }
+          style={{
+            width: '100%',
+            padding: 12,
+            border: '1px solid #E0E0E0',
+            borderRadius: 8,
+            fontSize: 16,
+            backgroundColor: '#FFFFFF',
+            marginBottom: 16,
+          }}
+        />
+      ) : (
+        <TextInput
+          style={styles.input}
+          value={formData.end_date ? formData.end_date.split('T')[0] : ''}
+          onChangeText={(t) =>
+            setProperty('end_date', new Date(t + 'T00:00:00').toISOString())
+          }
+          placeholder="YYYY-MM-DD"
+        />
+      )}
 
       <View style={styles.switchContainer}>
         <Text style={styles.label}>Activo</Text>
         <Switch
           value={!!formData.is_active}
-          onValueChange={(value) => setProperty('is_active', value)}
+          onValueChange={(v) => setProperty('is_active', v)}
         />
       </View>
     </View>
   );
+
 
   // Función para renderizar el formulario general
   const renderForm = () => {
