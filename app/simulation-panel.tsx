@@ -4,10 +4,10 @@ import {
     ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router'; // Hook para navegación entre pantallas
-import { useAuth } from '../context/AuthContext'; // Contexto para datos de autenticación y permisos
-import api from '../../config/api'; // Configuración para llamadas API al backend
+import { useAuth } from './context/AuthContext'; // Contexto para datos de autenticación y permisos
+import api from '../config/api'; // Configuración para llamadas API al backend
 import { Ionicons } from '@expo/vector-icons'; // Íconos vectoriales de Ionicons
-import CustomModal from '../components/CustomModal'; // Componente modal personalizado para mostrar alertas
+import CustomModal from './components/CustomModal'; // Componente modal personalizado para mostrar alertas
 
 
 // Tipo para controlar el estado y configuración del modal personalizado

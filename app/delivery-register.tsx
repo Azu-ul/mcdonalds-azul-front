@@ -15,9 +15,9 @@ import { yupResolver } from '@hookform/resolvers/yup'; // Resolución de esquema
 import * as yup from 'yup'; // Validación de esquemas
 import { Picker } from '@react-native-picker/picker'; // Selector desplegable
 import Checkbox from 'expo-checkbox'; // Componente checkbox
-import api from '../../config/api'; // Configuración API para backend
-import CustomModal from '../components/CustomModal'; // Modal personalizado
-import { useAuth } from '../context/AuthContext'; // Contexto de autenticación
+import api from '../config/api'; // Configuración API para backend
+import CustomModal from './components/CustomModal'; // Modal personalizado
+import { useAuth } from './context/AuthContext'; // Contexto de autenticación
 
 
 // Definición de tipos de datos para el formulario de repartidor

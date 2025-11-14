@@ -11,10 +11,10 @@ import {
   Modal,
 } from "react-native";
 import { useRouter } from "expo-router"; // Para navegación entre pantallas
-import {useAuth} from "../context/AuthContext"; // Contexto para autenticación
-import api from "../../config/api"; // API para conexión con backend
+import {useAuth} from "./context/AuthContext"; // Contexto para autenticación
+import api from "../config/api"; // API para conexión con backend
 import { Ionicons } from "@expo/vector-icons"; // Iconos vectoriales
-import CustomModal from "../components/CustomModal"; // Modal personalizado
+import CustomModal from "./components/CustomModal"; // Modal personalizado
 
 // Definición de tipos para pedidos y estado modal
 type Order = {
