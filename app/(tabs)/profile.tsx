@@ -658,7 +658,7 @@ export default function Profile() {
       {isRepartidor && (
         <TouchableOpacity
           style={styles.deliveryButton}
-          onPress={() => router.push('/delivery/delivery-home')}
+          onPress={() => router.push('/delivery-home')}
         >
           <Ionicons name="bicycle" size={20} color="#FFFFFF" />
           <Text style={styles.deliveryButtonText}>Panel de Repartidor</Text>

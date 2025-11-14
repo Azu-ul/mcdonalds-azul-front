@@ -679,7 +679,7 @@ export default function DeliveryHome() {
       {isRepartidor && (
         <TouchableOpacity
           style={styles.simulationButton}
-          onPress={() => router.push("delivery/simulation-panel")}
+          onPress={() => router.push("/simulation-panel")}
         >
           <Ionicons name="rocket" size={20} color="#FFFFFF" />
         </TouchableOpacity>
