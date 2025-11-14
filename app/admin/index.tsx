@@ -39,12 +39,12 @@ const AdminScreen = () => {
     const [permissionChecked, setPermissionChecked] = useState(false);
 
     const tabs = [
-        { key: 'usuarios', label: '👥 Usuarios', icon: 'people' },
-        { key: 'repartidores', label: '🚴 Repartidores', icon: 'bicycle' },
-        { key: 'productos', label: '🍕 Productos', icon: 'fast-food' },
-        { key: 'restaurantes', label: '🏪 Restaurantes', icon: 'restaurant' },
-        { key: 'cupones', label: '🎫 Cupones', icon: 'pricetag' },
-        { key: 'flyers', label: '📢 Flyers', icon: 'megaphone' },
+        { key: 'usuarios', label: 'Usuarios', icon: 'people' },
+        { key: 'repartidores', label: 'Repartidores', icon: 'bicycle' },
+        { key: 'productos', label: 'Productos', icon: 'fast-food' },
+        { key: 'restaurantes', label: 'Restaurantes', icon: 'restaurant' },
+        { key: 'cupones', label: 'Cupones', icon: 'pricetag' },
+        { key: 'flyers', label: 'Flyers', icon: 'megaphone' },
     ];
 
     // Verificar permisos de administrador después del montaje
