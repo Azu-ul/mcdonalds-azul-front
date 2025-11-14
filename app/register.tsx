@@ -265,6 +265,14 @@ export default function Register() {
             <Text style={styles.title}>Crear Cuenta</Text>
             <Text style={styles.subtitle}>Unite y empezá a disfrutar</Text>
 
+            {/* Botón para ser repartidor */}
+            <TouchableOpacity
+              style={styles.deliveryButton}
+              onPress={() => router.push('/delivery-register')}
+            >
+              <Text style={styles.deliveryButtonText}>¿Querés ser repartidor?</Text>
+            </TouchableOpacity>
+
             <View style={isMobile ? styles.columnLayout : styles.rowLayout}>
               <View style={isMobile ? styles.fullWidth : styles.halfWidth}>
                 <Controller
@@ -410,13 +418,7 @@ export default function Register() {
               <Text style={styles.link}>¿Ya tenés cuenta? <Text style={styles.linkBold}>Ingresá acá</Text></Text>
             </TouchableOpacity>
           </View>
-          {/* Botón para ser repartidor */}
-          <TouchableOpacity
-            style={styles.deliveryButton}
-            onPress={() => router.push('/delivery-register')}
-          >
-            <Text style={styles.deliveryButtonText}>¿Querés ser repartidor?</Text>
-          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.push('/')}
