@@ -150,46 +150,48 @@ const AdminScreen = () => {
     };
 
     // Función para confirmar la eliminación
+    // Función para confirmar la eliminación
     const confirmDelete = async () => {
         if (!itemToDelete) return;
 
         const itemName = getItemDisplayName(itemToDelete);
 
-        // ✅ Cerrar modal inmediatamente
+        // ✅ Cerrar el modal de confirmación inmediatamente
         setModal(prev => ({ ...prev, visible: false }));
 
         try {
             await api.delete(`/admin/${activeTab}/${itemToDelete.id}`);
 
-            // Esperar un momento antes de mostrar el modal de éxito
-            setTimeout(() => {
-                showModal({
-                    type: 'success',
-                    title: 'Éxito',
-                    message: `${itemName} eliminado correctamente`,
-                    showCancel: false,
-                    confirmText: 'Aceptar',
-                    onConfirm: () => {
-                        hideModal();
-                        fetchData();
-                    }
-                });
-            }, 100);
+            // ✅ Recargar los datos *antes* de mostrar el modal de éxito
+            await fetchData();
+
+            // ✅ Mostrar modal de éxito sin setTimeout
+            setModal({
+                visible: true,
+                type: 'success',
+                title: 'Éxito',
+                message: `${itemName} eliminado correctamente`,
+                showCancel: false,
+                confirmText: 'Aceptar',
+                onConfirm: () => {
+                    hideModal(); // Cierra el modal de éxito
+                }
+            });
 
         } catch (err: any) {
             console.error('Delete error:', err);
             const errorMessage = err.response?.data?.error || 'No se pudo eliminar';
 
-            setTimeout(() => {
-                showModal({
-                    type: 'error',
-                    title: 'Error',
-                    message: errorMessage,
-                    showCancel: false,
-                    confirmText: 'Aceptar',
-                    onConfirm: () => hideModal()
-                });
-            }, 100);
+            // ✅ Mostrar modal de error sin setTimeout
+            setModal({
+                visible: true,
+                type: 'error',
+                title: 'Error',
+                message: errorMessage,
+                showCancel: false,
+                confirmText: 'Aceptar',
+                onConfirm: () => hideModal()
+            });
         } finally {
             setItemToDelete(null);
         }
